@@ -1,0 +1,549 @@
+/* src/index.css */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:wght@500;600&display=swap');
+
+:root {
+  /* ----- COLOR PALETTE ----- */
+  /* Neutrals: charcoal-to-offwhite range, no pure black/white — softer, premium feel */
+  --color-ink: #1c1c1a;         /* near-black, for primary text */
+  --color-charcoal: #3a3a36;    /* secondary text, icons */
+  --color-slate: #6b6b64;       /* muted/tertiary text */
+  --color-border: #ded9d0;      /* hairline borders, dividers */
+  --color-surface: #faf8f4;     /* off-white background, warm not clinical */
+  --color-surface-raised: #ffffff; /* cards sit slightly whiter than the page */
+
+  /* Single intentional accent — deep olive/forest green */
+  --color-accent: #3f4f34;
+  --color-accent-hover: #333f2b;
+  --color-accent-soft: #eaece3; /* pale olive tint, for subtle backgrounds/badges */
+
+  /* Semantic feedback colors — muted, not neon */
+  --color-danger: #8c3a2e;      /* for "you owe" states */
+  --color-success: #3f4f34;     /* reuse accent for "you're owed" states */
+
+  /* ----- TYPOGRAPHY ----- */
+  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-display: 'Fraunces', Georgia, serif; /* for large numbers/headings — gives financial gravitas */
+
+  /* ----- SPACING SCALE ----- */
+  /* Using a consistent scale instead of arbitrary pixel values everywhere */
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 1.5rem;
+  --space-lg: 2.5rem;
+  --space-xl: 4rem;
+
+  /* ----- OTHER ----- */
+  --radius: 2px; /* deliberately sharp, NOT the rounded-everything look */
+  --border-hairline: 1px solid var(--color-border);
+}
+
+/* Basic reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+/* ===== HEADER ===== */
+.app-header {
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: var(--border-hairline);
+}
+
+.app-header__logo {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* ===== MAIN LAYOUT ===== */
+.app-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-lg);
+}
+
+/* ===== SECTION HEADER ===== */
+.section-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-sm);
+  border-bottom: var(--border-hairline);
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.section-count {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--color-slate);
+}
+
+/* ===== GROUPS GRID ===== */
+/* A sharp, deliberate grid — not a vague "flex-wrap and hope" layout.
+   auto-fill + minmax means it reflows cleanly across screen sizes without
+   needing separate breakpoints for this particular component. */
+.groups-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1px;
+  background-color: var(--color-border);
+  border: var(--border-hairline);
+}
+/* The trick above: a 1px gap filled with the border color, on a bordered
+   container, produces perfect hairline dividers BETWEEN cards without
+   each card needing its own border on every side — cleaner than individual
+   card borders, which often double up and look heavier than intended. */
+
+.group-card {
+  background-color: var(--color-surface-raised);
+  padding: var(--space-md);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.group-card:hover {
+  background-color: var(--color-accent-soft);
+}
+
+.group-card__name {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  font-weight: 500;
+  margin-bottom: var(--space-xs);
+}
+
+.group-card__meta {
+  font-size: 0.875rem;
+  color: var(--color-slate);
+}
+
+/* ===== STATUS TEXT (loading/error/empty states) ===== */
+.status-text {
+  color: var(--color-slate);
+  font-size: 0.9375rem;
+}
+
+.status-text--error {
+  color: var(--color-danger);
+}
+/* ===== BACK LINK ===== */
+.back-link {
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--color-slate);
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: var(--space-md);
+}
+
+.back-link:hover {
+  color: var(--color-ink);
+}
+
+/* ===== MEMBERS ROW ===== */
+.members-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-xl);
+}
+
+.member-chip {
+  font-size: 0.8125rem;
+  padding: 0.375rem 0.75rem;
+  border: var(--border-hairline);
+  color: var(--color-charcoal);
+}
+
+/* ===== BALANCES ===== */
+.subsection-title {
+  font-family: var(--font-body);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-slate);
+  margin-bottom: var(--space-sm);
+}
+
+.balances-list {
+  border-top: 2px solid var(--color-ink);
+}
+/* A deliberately heavier 2px top border on the whole balances table gives
+   it the weight of a financial statement / ledger — distinct from the
+   1px hairlines used elsewhere, so this section reads as "the important
+   numbers" at a glance. */
+
+.balance-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: var(--space-sm) 0;
+  border-bottom: var(--border-hairline);
+}
+
+.balance-row__names {
+  font-size: 0.9375rem;
+  color: var(--color-charcoal);
+}
+
+.balance-row__amount {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  /* tabular-nums keeps digit widths consistent, so amounts in a stacked
+     list align cleanly on their decimal points instead of jittering
+     left/right based on which digits appear — a small but very
+     "financial statement" detail. */
+}
+
+/* ===== HEADER (updated for button alignment) ===== */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ===== BUTTONS ===== */
+.btn {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn--primary {
+  background-color: var(--color-ink);
+  color: var(--color-surface);
+}
+
+.btn--primary:hover {
+  background-color: var(--color-charcoal);
+}
+
+.btn--primary:disabled {
+  background-color: var(--color-slate);
+  cursor: not-allowed;
+}
+
+/* ===== FORM ===== */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  max-width: 440px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.form-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-slate);
+}
+
+.form-input {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  padding: 0.75rem;
+  border: var(--border-hairline);
+  background-color: var(--color-surface-raised);
+  color: var(--color-ink);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+/* ===== MEMBER SELECT CHECKBOX LIST ===== */
+.member-select-list {
+  border: var(--border-hairline);
+  background-color: var(--color-surface-raised);
+}
+
+.member-select-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  cursor: pointer;
+  border-bottom: var(--border-hairline);
+}
+
+.member-select-row:last-child {
+  border-bottom: none;
+}
+
+.member-select-row:hover {
+  background-color: var(--color-surface);
+}
+
+.member-select-row input[type='checkbox'] {
+  /* Restyling native checkboxes to match a sharp, minimal aesthetic instead
+     of the default rounded browser checkbox */
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.member-select-row__name {
+  flex: 1;
+  font-size: 0.9375rem;
+  color: var(--color-ink);
+}
+
+.member-select-row__tags {
+  font-size: 0.75rem;
+  color: var(--color-slate);
+}
+
+.form--wide {
+  max-width: 720px;
+}
+
+/* ===== OCR PLACEHOLDER ===== */
+.ocr-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: var(--space-lg);
+  border: 1px dashed var(--color-border);
+  color: var(--color-slate);
+  text-align: center;
+}
+
+.ocr-placeholder__label {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--color-charcoal);
+}
+
+.ocr-placeholder__note {
+  font-size: 0.8125rem;
+}
+
+/* ===== DIETARY POOLS ===== */
+.pools-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background-color: var(--color-border);
+  border: var(--border-hairline);
+}
+
+.member-pool {
+  background-color: var(--color-surface-raised);
+  padding: var(--space-sm);
+}
+
+.member-pool__label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-slate);
+  margin-bottom: var(--space-xs);
+}
+
+.member-pool__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: 0.375rem 0;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.member-pool__row input[type='checkbox'] {
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+/* ===== LINE ITEMS ===== */
+.line-items {
+  border: var(--border-hairline);
+  background-color: var(--color-surface-raised);
+}
+
+.line-item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) 64px 32px;
+  gap: var(--space-xs);
+  align-items: center;
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: var(--border-hairline);
+}
+
+.line-item-row:last-child {
+  border-bottom: none;
+}
+
+.line-item-row--header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-slate);
+  background-color: var(--color-surface);
+}
+
+.form-input--compact {
+  padding: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.line-item-row__checkbox {
+  display: flex;
+  justify-content: center;
+}
+
+.remove-row-btn {
+  background: none;
+  border: none;
+  color: var(--color-slate);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+}
+
+.remove-row-btn:hover:not(:disabled) {
+  color: var(--color-danger);
+}
+
+.remove-row-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ===== GHOST BUTTON ===== */
+.btn--ghost {
+  background: none;
+  border: var(--border-hairline);
+  color: var(--color-ink);
+  margin-top: var(--space-xs);
+}
+
+.btn--ghost:hover {
+  background-color: var(--color-accent-soft);
+  border-color: var(--color-accent);
+}
+
+/* ===== SPLIT PREVIEW ===== */
+.preview-block {
+  border: 2px solid var(--color-ink);
+  padding: var(--space-md);
+}
+
+.preview-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  border-bottom: var(--border-hairline);
+}
+
+.preview-total__amount {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.line-item-row--header span:nth-child(4) {
+  text-align: center;
+}
+
+/* ===== BALANCE ROW (updated for the settle button) ===== */
+.balance-row__right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.btn--small {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.form-hint {
+  font-size: 0.75rem;
+  color: var(--color-slate);
+}
+
+/* ===== SETTLE UP MODAL ===== */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(28, 28, 26, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: var(--space-lg);
+}
+
+.modal-panel {
+  background-color: var(--color-surface);
+  border: 2px solid var(--color-ink);
+  padding: var(--space-lg);
+  width: 100%;
+  max-width: 360px;
+}
+
+.settle-summary {
+  font-size: 0.9375rem;
+  color: var(--color-charcoal);
+  margin: var(--space-xs) 0 var(--space-md);
+}
+
+.modal-actions {
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: flex-end;
+}
+
+.modal-actions .btn {
+  flex: 0 0 auto;
+}

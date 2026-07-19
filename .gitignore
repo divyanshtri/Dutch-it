@@ -1,0 +1,17 @@
+# .gitignore (project root)
+
+# Environment variables — NEVER commit real secrets
+.env
+.env.local
+*.env
+
+# Dependencies — reinstalled via package.json, shouldn't be tracked
+node_modules/
+
+# Build output
+dist/
+build/
+
+# OS/editor noise
+.DS_Store
+.vscode/
