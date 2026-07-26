@@ -7,18 +7,31 @@ const userRoutes = require('./routes/userRoutes');
 const groupRoutes = require('./routes/groupRoutes');    
 const expenseRoutes = require('./routes/expenseRoutes');
 const settlementRoutes = require('./routes/settlementRoutes');
+const receiptRoutes = require('./routes/receiptRoutes');
+const cookieParser = require('cookie-parser');
+const authRoutes = require('./routes/authRoutes');
+const friendRoutes = require('./routes/friendRoutes');
 
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173', // must be an explicit origin, NOT '*', when credentials:true
+  credentials: true,
+}));
 
+app.use(cookieParser());
 app.use(express.json());
 
+app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/settlements', settlementRoutes);
+app.use('/api/receipts', receiptRoutes);
+app.use('/api/friends', friendRoutes);
+
+
 
 
 mongoose.connect(process.env.MONGO_URI)

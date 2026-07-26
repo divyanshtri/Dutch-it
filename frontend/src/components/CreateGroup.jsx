@@ -1,57 +1,57 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 function CreateGroup({ onGroupCreated, onCancel }) {
-  // ----- FORM STATE -----
+  const { user } = useAuth();
   const [name, setName] = useState('');
-  // selectedMembers holds the IDs of checked users. We use an array of
-  // strings (not, say, an object of booleans) because that's exactly the
-  // shape our POST /api/groups route expects for `members`.
   const [selectedMembers, setSelectedMembers] = useState([]);
-
-  // ----- USERS LIST (to render checkboxes for) -----
-  const [users, setUsers] = useState([]);
-  const [isLoadingUsers, setIsLoadingUsers] = useState(true);
-
-  // ----- SUBMISSION STATE -----
+  const [friends, setFriends] = useState([]);
+  const [isLoadingFriends, setIsLoadingFriends] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  // Auto-select current logged-in user ID upon mount/auth load
   useEffect(() => {
-    async function fetchUsers() {
+    if (user?._id) {
+      setSelectedMembers((prev) =>
+        prev.includes(user._id) ? prev : [...prev, user._id]
+      );
+    }
+  }, [user]);
+
+  // Fetch only the logged-in user's friend list
+  useEffect(() => {
+    async function fetchFriends() {
       try {
-        const res = await fetch('http://localhost:5000/api/users');
+        const res = await fetch('http://localhost:5000/api/friends', {
+          credentials: 'include',
+        });
+        if (!res.ok) throw new Error('Failed to load friends');
         const data = await res.json();
-        setUsers(data);
+        setFriends(data);
       } catch (err) {
-        setError('Could not load users.');
+        setError('Could not load friends.');
       } finally {
-        setIsLoadingUsers(false);
+        setIsLoadingFriends(false);
       }
     }
-    fetchUsers();
+    fetchFriends();
   }, []);
 
-  // Toggles a single user ID in/out of the selectedMembers array.
-  // This is the standard React pattern for a checkbox group: you never
-  // mutate the existing array directly (e.g. selectedMembers.push(id) is
-  // WRONG — React won't detect that as a change). Instead you build a
-  // brand new array every time and hand that to setSelectedMembers.
   function toggleMember(userId) {
+    // Prevent unchecking yourself from group membership
+    if (userId === user?._id) return;
+
     setSelectedMembers((prevSelected) => {
       if (prevSelected.includes(userId)) {
-        // Already selected -> uncheck it: keep everyone EXCEPT this id
         return prevSelected.filter((id) => id !== userId);
       } else {
-        // Not selected yet -> check it: keep everyone, plus this new id
         return [...prevSelected, userId];
       }
     });
   }
 
   async function handleSubmit(e) {
-    // Forms submit and reload the whole page by default in plain HTML.
-    // preventDefault() stops that, since we want to handle the submission
-    // ourselves with fetch() instead and stay on this single-page app.
     e.preventDefault();
 
     if (!name.trim()) {
@@ -70,15 +70,8 @@ function CreateGroup({ onGroupCreated, onCancel }) {
       const res = await fetch('http://localhost:5000/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // createdBy: for now, we default to the first selected member as
-        // creator, since we don't have real auth/login yet to know "who is
-        // currently using the app." Once you build auth, this will become
-        // the logged-in user's ID instead.
-        body: JSON.stringify({
-          name,
-          members: selectedMembers,
-          createdBy: selectedMembers[0],
-        }),
+        credentials: 'include',
+        body: JSON.stringify({ name, members: selectedMembers }),
       });
 
       if (!res.ok) {
@@ -86,7 +79,7 @@ function CreateGroup({ onGroupCreated, onCancel }) {
         throw new Error(data.message || 'Failed to create group.');
       }
 
-      onGroupCreated(); // tell the parent we're done, let it decide what's next
+      onGroupCreated();
     } catch (err) {
       setError(err.message);
       setIsSubmitting(false);
@@ -121,21 +114,27 @@ function CreateGroup({ onGroupCreated, onCancel }) {
         <div className="form-field">
           <span className="form-label">Members</span>
 
-          {isLoadingUsers ? (
-            <p className="status-text">Loading users…</p>
+          {isLoadingFriends ? (
+            <p className="status-text">Loading friends…</p>
+          ) : friends.length === 0 ? (
+            <p className="status-text">
+              You haven't added any friends yet. Go to the Friends tab to add
+              some first.
+            </p>
           ) : (
             <div className="member-select-list">
-              {users.map((user) => (
-                <label key={user._id} className="member-select-row">
+              {friends.map((friend) => (
+                <label key={friend._id} className="member-select-row">
                   <input
                     type="checkbox"
-                    checked={selectedMembers.includes(user._id)}
-                    onChange={() => toggleMember(user._id)}
+                    checked={selectedMembers.includes(friend._id)}
+                    onChange={() => toggleMember(friend._id)}
                   />
-                  <span className="member-select-row__name">{user.name}</span>
+                  <span className="member-select-row__name">
+                    {friend.fullName}
+                  </span>
                   <span className="member-select-row__tags">
-                    {user.isVegetarian ? 'Veg' : 'Non-veg'}
-                    {user.drinksAlcohol ? ' · Drinks' : ''}
+                    {friend.email}
                   </span>
                 </label>
               ))}
@@ -145,7 +144,11 @@ function CreateGroup({ onGroupCreated, onCancel }) {
 
         {error && <p className="status-text status-text--error">{error}</p>}
 
-        <button type="submit" className="btn btn--primary" disabled={isSubmitting}>
+        <button
+          type="submit"
+          className="btn btn--primary"
+          disabled={isSubmitting}
+        >
           {isSubmitting ? 'Creating…' : 'Create Group'}
         </button>
       </form>

@@ -5,18 +5,21 @@ import RecordSettlement from './RecordSettlement';
 function GroupDetail({ groupId, onBack }) {
   const [group, setGroup] = useState(null);
   const [balances, setBalances] = useState([]);
+  const [friends, setFriends] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showCreateExpense, setShowCreateExpense] = useState(false); // <- Toggle state for the Create Expense view
-  const [settlingDebt, setSettlingDebt] = useState(null); 
+  const [showCreateExpense, setShowCreateExpense] = useState(false);
+  const [settlingDebt, setSettlingDebt] = useState(null);
 
-  // Named function so we can manually run a re-fetch after a new expense is successfully saved
+  // Add Member Modal State
+  const [showAddMember, setShowAddMember] = useState(false);
+
   async function fetchGroupData() {
     try {
-      setIsLoading(true); // reset to true in case we're switching FROM another group
+      setIsLoading(true);
       const [groupRes, balancesRes] = await Promise.all([
-        fetch(`http://localhost:5000/api/groups/${groupId}`),
-        fetch(`http://localhost:5000/api/groups/${groupId}/balances`),
+        fetch(`http://localhost:5000/api/groups/${groupId}`, { credentials: 'include' }),
+        fetch(`http://localhost:5000/api/groups/${groupId}/balances`, { credentials: 'include' }),
       ]);
 
       if (!groupRes.ok || !balancesRes.ok) {
@@ -37,14 +40,61 @@ function GroupDetail({ groupId, onBack }) {
 
   useEffect(() => {
     fetchGroupData();
-    // [groupId] dependency ensures we re-fetch if we click into a different group
   }, [groupId]);
+
+  // Fetch friends and open the modal
+  async function openAddMember() {
+    setShowAddMember(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/friends', { credentials: 'include' });
+      if (res.ok) {
+        const friendsData = await res.json();
+        setFriends(friendsData);
+      }
+    } catch (err) {
+      console.error('Failed to fetch friends for selection:', err);
+    }
+  }
+
+  // Directly pass friendId on click and update local group state from backend JSON response
+  async function handleAddMember(friendId) {
+    try {
+      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ userId: friendId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to add member');
+
+      setGroup(data); // updated, populated group comes straight back from route
+      setShowAddMember(false);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
+  async function handleDeleteGroup() {
+    if (!window.confirm(`Delete "${group.name}" permanently? This cannot be undone.`)) return;
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/groups/${groupId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      onBack(); // return to the groups list
+    } catch (err) {
+      setError(err.message);
+    }
+  }
 
   if (isLoading) return <p className="status-text">Loading group…</p>;
   if (error) return <p className="status-text status-text--error">{error}</p>;
   if (!group) return null;
 
-  // Show the Create Expense form in place of the detail view when active
   if (showCreateExpense) {
     return (
       <CreateExpense
@@ -52,16 +102,16 @@ function GroupDetail({ groupId, onBack }) {
         onCancel={() => setShowCreateExpense(false)}
         onExpenseCreated={() => {
           setShowCreateExpense(false);
-          fetchGroupData(); // re-fetch so the new balances update instantly
+          fetchGroupData();
         }}
       />
     );
   }
 
-  // Build lookup mapping user IDs to names
+  // Build lookup mapping user IDs to names with full fallbacks
   const nameById = {};
   group.members.forEach((member) => {
-    nameById[member._id] = member.name;
+    nameById[member._id] = member.fullName || member.name || 'Unknown';
   });
 
   return (
@@ -72,12 +122,18 @@ function GroupDetail({ groupId, onBack }) {
 
       <div className="section-header">
         <h2 className="section-title">{group.name}</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span className="section-count">
             {group.members.length} member{group.members.length !== 1 ? 's' : ''}
           </span>
+          <button className="btn btn--ghost" onClick={openAddMember}>
+            + Add Member
+          </button>
           <button className="btn btn--primary" onClick={() => setShowCreateExpense(true)}>
             + Add Expense
+          </button>
+          <button className="btn btn--ghost" onClick={handleDeleteGroup}>
+            Delete Group
           </button>
         </div>
       </div>
@@ -86,7 +142,7 @@ function GroupDetail({ groupId, onBack }) {
       <div className="members-row">
         {group.members.map((member) => (
           <span key={member._id} className="member-chip">
-            {member.name}
+            {member.fullName || member.name || 'Unknown'}
           </span>
         ))}
       </div>
@@ -119,7 +175,33 @@ function GroupDetail({ groupId, onBack }) {
           </div>
         )}
       </div>
-      
+
+      {/* ----- ADD MEMBER MODAL ----- */}
+      {showAddMember && (
+        <div className="modal-backdrop" onClick={() => setShowAddMember(false)}>
+          <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+            <h3 className="subsection-title">Add Member</h3>
+            <div className="member-select-list">
+              {friends
+                .filter((f) => !group.members.some((m) => m._id === f._id))
+                .map((f) => (
+                  <div
+                    key={f._id}
+                    className="member-select-row"
+                    onClick={() => handleAddMember(f._id)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <span className="member-select-row__name">
+                      {f.fullName || f.name || 'Unknown'}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ----- SETTLEMENT MODAL ----- */}
       {settlingDebt && (
         <RecordSettlement
           groupId={groupId}
@@ -128,7 +210,7 @@ function GroupDetail({ groupId, onBack }) {
           onCancel={() => setSettlingDebt(null)}
           onSettled={() => {
             setSettlingDebt(null);
-            fetchGroupData(); // re-fetch so the balance list reflects the new state instantly
+            fetchGroupData();
           }}
         />
       )}

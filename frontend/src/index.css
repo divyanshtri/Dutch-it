@@ -407,11 +407,23 @@ body {
 
 .line-item-row {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) 64px 32px;
+  /* Added a fixed 56px column for Qty, right after Price. Fixed width
+     (not fr) for the same reason Alcohol/Remove are fixed — a short
+     numeric input has no reason to stretch, and fixed widths keep the
+     header row locked to the data rows exactly like we fixed before. */
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 56px minmax(0, 1fr) 64px 32px;
   gap: var(--space-xs);
   align-items: center;
   padding: var(--space-xs) var(--space-sm);
   border-bottom: var(--border-hairline);
+}
+
+.line-item-row--header span:nth-child(3) {
+  text-align: center; /* Qty header, centered like Alcohol */
+}
+
+.line-item-row--header span:nth-child(5) {
+  text-align: center; /* Alcohol header, shifted from nth-child(4) since Qty is now column 3 */
 }
 
 .line-item-row:last-child {
@@ -546,4 +558,137 @@ body {
 
 .modal-actions .btn {
   flex: 0 0 auto;
+}
+
+.ocr-placeholder {
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.ocr-placeholder--dragging {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+}
+
+.app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+}
+
+.auth-panel {
+  width: 100%;
+  max-width: 380px;
+  padding: var(--space-lg);
+  border: 2px solid var(--color-ink);
+  background-color: var(--color-surface-raised);
+}
+
+.auth-switch {
+  margin-top: var(--space-md);
+  font-size: 0.875rem;
+  color: var(--color-slate);
+  text-align: center;
+}
+
+.auth-brand {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: var(--space-lg);
+  color: var(--color-ink);
+}
+
+.navbar {
+  border-bottom: var(--border-hairline);
+  background-color: var(--color-surface-raised);
+}
+
+.navbar__top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+}
+
+.navbar__search {
+  flex: 1;
+  max-width: 320px;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  border: var(--border-hairline);
+  background-color: var(--color-surface);
+}
+
+.navbar__search:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.navbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-left: auto;
+}
+
+.navbar__tabs {
+  display: flex;
+  gap: var(--space-lg);
+  padding: 0 var(--space-lg);
+}
+
+.navbar__tab {
+  background: none;
+  border: none;
+  padding: var(--space-sm) 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-slate);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px; /* pulls the active border flush onto the navbar's own bottom border */
+}
+
+.navbar__tab--active {
+  color: var(--color-ink);
+  border-bottom-color: var(--color-accent);
+}
+
+/* All three top-right nav buttons share this exact box model, so height,
+   padding, and font-size can never silently drift apart just because one
+   button's text is longer than another's — every .btn--nav is identical
+   in every dimension except color/border, which come from the separate
+   .btn--primary / .btn--ghost modifier already applied alongside it. */
+.btn--nav {
+  height: 38px;
+  padding: 0 1.25rem;
+  font-size: 0.875rem;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.add-friend-form {
+  flex-direction: row;
+  align-items: flex-end;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-lg);
+  max-width: none;
+}
+.add-friend-form .form-input {
+  flex: 1;
+}
+.status-text--success {
+  color: var(--color-accent);
 }

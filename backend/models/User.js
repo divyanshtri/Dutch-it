@@ -1,28 +1,53 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema(
   {
-    name: {
+    fullName: {
       type: String,
-      required: true, 
-      trim: true,      
+      required: true,
+      trim: true,
     },
     email: {
       type: String,
       required: true,
-      unique: true,   
-      lowercase: true, 
+      unique: true,
+      lowercase: true,
       trim: true,
+      // Basic shape validation — not exhaustive RFC 5322 compliance (nothing
+      // is), but catches obvious garbage input before it hits the database.
+      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please provide a valid email address.'],
+    },
+    phoneNumber: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      // Accepts an optional leading + and 7-15 digits — deliberately loose
+      // since phone formats vary hugely by country, and you're building a
+      // "search by phone" feature later, not payment/SMS integration where
+      // strict E.164 formatting would matter more.
+      match: [/^\+?[0-9]{7,15}$/, 'Please provide a valid phone number.'],
     },
     password: {
       type: String,
       required: true,
-      // NOTE: Never store plain-text passwords. When you build your auth routes,
-      // you'll hash this with bcrypt BEFORE saving it here. The schema itself
-      // doesn't know or care that it's hashed — it just stores whatever string it's given.
+      minlength: 8,
+      // select: false means this field is EXCLUDED from query results by
+      // default — e.g. User.find() will never return password hashes,
+      // even accidentally. You have to explicitly opt in with
+      // .select('+password') on the rare query that actually needs it
+      // (like login, below). This is a strong default-safe pattern: it's
+      // much harder to accidentally leak a password hash to the frontend
+      // if the schema itself refuses to return it unless asked.
+      select: false,
     },
 
+    // ----- FRIENDS LIST -----
+    // Stores array of User ObjectIds to support friend additions and populate operations
+    friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
+    // ----- EXISTING FIELDS, PRESERVED -----
     isVegetarian: {
       type: Boolean,
       default: false,
@@ -33,18 +58,48 @@ const userSchema = new mongoose.Schema(
     },
   },
   {
-
     timestamps: true,
     strict: 'throw',
-    // Normally, Mongoose's default strict mode just SILENTLY DROPS any field
-    // in the request body that isn't defined in the schema. Setting this to
-    // 'throw' changes that behavior: if req.body contains a key that doesn't
-    // exist in the schema (a typo, or a frontend bug), Mongoose will throw a
-    // StrictModeError instead of quietly ignoring it. This trades a small
-    // amount of flexibility for catching bugs immediately instead of silently
-    // computing wrong numbers — exactly what bit you with `tag` vs `dietaryTag`.
   }
 );
 
+// ----- INDEXES -----
+// email and phoneNumber already get a unique index automatically from
+// `unique: true` above. This one is new: a text index across fullName,
+// email, and phoneNumber together, specifically for the future "Find
+// Friends" search feature. A text index lets MongoDB do fast, relevance-
+// ranked substring/keyword search across multiple fields in one query,
+// rather than you writing three separate regex queries and merging results
+// yourself — regex scans are slow at scale, text indexes are built for this.
+userSchema.index({ fullName: 'text', email: 'text', phoneNumber: 'text' });
+
+// ----- PASSWORD HASHING: PRE-SAVE HOOK -----
+// NOTE: this hook is `async` and takes NO `next` parameter. In current
+// Mongoose, when a pre-hook is async, Mongoose automatically waits for the
+// returned Promise to resolve before proceeding — it does NOT expect you
+// to also call a next() callback. Declaring next as a parameter but never
+// receiving a real function for it (as happened above) throws exactly the
+// TypeError you hit. The fix is simply: don't ask for next, don't call it,
+// just let the async function finish (or throw, which Mongoose also
+// catches automatically and turns into a rejected save()).
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) {
+    return; // returning early is enough — no next() needed
+  }
+
+  const salt = await bcrypt.genSalt(12);
+  this.password = await bcrypt.hash(this.password, salt);
+  // no next() call at the end either — the function just completes
+});
+
+// ----- INSTANCE METHOD: comparePassword -----
+// Attached to every User document, so anywhere you have a `user` object
+// you can call user.comparePassword(plainTextAttempt) directly.
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  // bcrypt.compare hashes the candidate with the SAME salt stored in
+  // this.password and checks if the results match — it never "decrypts"
+  // the stored hash, because bcrypt hashing isn't reversible by design.
+  return bcrypt.compare(candidatePassword, this.password);
+};
 
 module.exports = mongoose.model('User', userSchema);

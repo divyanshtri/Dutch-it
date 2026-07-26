@@ -1,12 +1,4 @@
 function calculateSplit(lineItems, vegMembers, nonVegMembers, alcoholMembers) {
-  // ----- NORMALIZE ALL IDs TO STRINGS FIRST -----
-  // Mongoose ObjectIds are objects, not primitive strings. Two ObjectId
-  // instances can represent the exact same ID yet fail === comparisons and
-  // fail Set-based deduplication, because JS compares objects by reference,
-  // not by value. Converting everything to strings up front means every
-  // comparison, Set operation, and object-key lookup below behaves correctly,
-  // whether this function was called with raw strings (from a Postman body)
-  // or Mongoose ObjectId objects (from a saved document, like in /balances).
   vegMembers = vegMembers.map((id) => id.toString());
   nonVegMembers = nonVegMembers.map((id) => id.toString());
   alcoholMembers = alcoholMembers.map((id) => id.toString());
@@ -36,7 +28,12 @@ function calculateSplit(lineItems, vegMembers, nonVegMembers, alcoholMembers) {
       return;
     }
 
-    const splitAmount = item.price / responsibleGroup.length;
+    // THE KEY CHANGE: the line's actual cost is unit price × quantity, not
+    // just price alone. (item.quantity || 1) guards older saved expenses
+    // from before this feature existed, which have no quantity field at
+    // all — they'll correctly behave as quantity 1, i.e. unchanged math.
+    const lineTotal = item.price * (item.quantity || 1);
+    const splitAmount = lineTotal / responsibleGroup.length;
 
     responsibleGroup.forEach((userId) => {
       if (balances[userId] === undefined) {

@@ -26,6 +26,7 @@ function RecordSettlement({ groupId, debt, nameById, onSettled, onCancel }) {
       const res = await fetch('http://localhost:5000/api/settlements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           groupId,
           payerId: debt.owes,      // the person paying money back

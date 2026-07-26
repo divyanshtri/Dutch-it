@@ -4,6 +4,9 @@ const router = express.Router();
 const Expense = require('../models/Expense');
 const Group = require('../models/Group');
 const calculateSplit = require('../utils/splitCalculator'); // <-- now imported, not defined here
+const protect = require('../middleware/authMiddleware');
+
+router.use(protect)
 
 // ===== GET /api/expenses - fetch all expenses (for debugging/testing) =====
 router.get('/', async (req, res) => {

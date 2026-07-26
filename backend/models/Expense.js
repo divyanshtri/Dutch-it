@@ -13,6 +13,13 @@ const lineItemSchema = new mongoose.Schema({
     min: 0, 
   },
 
+  quantity: {  // NEW
+    type: Number, 
+    required: true, 
+    min: 1, 
+    default: 1 
+  }, 
+
   dietaryTag: {
     type: String,
     enum: ['veg', 'non-veg', 'neutral'],

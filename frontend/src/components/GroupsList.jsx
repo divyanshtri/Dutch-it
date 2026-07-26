@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
-// 1. We accept the onSelectGroup prop here from App.jsx
-function GroupsList({ onSelectGroup }) {
+// 1. We accept onSelectGroup and searchTerm props here
+function GroupsList({ onSelectGroup, searchTerm = '' }) {
   const [groups, setGroups] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -9,7 +9,8 @@ function GroupsList({ onSelectGroup }) {
   useEffect(() => {
     async function fetchGroups() {
       try {
-        const response = await fetch('http://localhost:5000/api/groups');
+        // Include credentials so the HTTP-only auth cookie is sent along
+        const response = await fetch('http://localhost:5000/api/groups', { credentials: 'include' });
 
         if (!response.ok) {
           throw new Error('Failed to fetch groups from the server.');
@@ -27,6 +28,11 @@ function GroupsList({ onSelectGroup }) {
     fetchGroups();
   }, []);
 
+  // Filter groups in real-time as searchTerm changes
+  const filteredGroups = groups.filter((g) =>
+    g.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   if (isLoading) {
     return <p className="status-text">Loading groups…</p>;
   }
@@ -39,15 +45,18 @@ function GroupsList({ onSelectGroup }) {
     <section>
       <div className="section-header">
         <h2 className="section-title">Your Groups</h2>
-        <span className="section-count">{groups.length}</span>
+        <span className="section-count">{filteredGroups.length}</span>
       </div>
 
-      {groups.length === 0 ? (
-        <p className="status-text">No groups yet. Create one to get started.</p>
+      {filteredGroups.length === 0 ? (
+        <p className="status-text">
+          {groups.length === 0
+            ? 'No groups yet. Create one to get started.'
+            : 'No groups match your search.'}
+        </p>
       ) : (
         <div className="groups-grid">
-          {groups.map((group) => (
-            // 2. Wired the click handler directly to this card block
+          {filteredGroups.map((group) => (
             <div
               key={group._id}
               className="group-card"

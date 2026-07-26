@@ -1,27 +1,22 @@
 import { useState } from 'react';
 import { calculateSplit } from '../utils/calculateSplit';
+import ReceiptUpload from './ReceiptUpload';
 
 // A blank line item template — used both for the initial row and every
-// time "+ Add Item" is clicked. Centralizing this shape in one place means
-// if you add a field later (e.g. a `guestOwnerId` for temporary profiles),
-// you only update it here.
+// time "+ Add Item" is clicked.
 function blankLineItem() {
   return {
-    id: crypto.randomUUID(), // a stable local key, since these rows have no DB _id yet
+    id: crypto.randomUUID(), // stable local key
     itemName: '',
     price: '',
+    quantity: 1,
     dietaryTag: 'neutral',
     isAlcohol: false,
   };
 }
 
 function CreateExpense({ group, onExpenseCreated, onCancel }) {
-  // `group.members` is already the full list of populated user objects,
-  // passed down from GroupDetail. Calling this `availableMembers` (rather
-  // than just using group.members everywhere) is a deliberate seam: when
-  // guest/temporary profiles exist later, this is the one spot that would
-  // merge real members + temp guests into a single list — nothing else in
-  // this component needs to change.
+  // `group.members` is already the full list of populated user objects
   const availableMembers = group.members;
 
   const [description, setDescription] = useState('');
@@ -34,10 +29,24 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
+  // ----- AI RECEIPT PARSING HANDLER -----
+  function handleReceiptParsed(receiptData) {
+    if (!receiptData) return;
+    
+    const mappedItems = receiptData.lineItems.map((item) => ({
+      id: crypto.randomUUID(),
+      itemName: item.itemName,
+      price: item.price,
+      quantity: item.quantity && item.quantity > 0 ? item.quantity : 1,
+      dietaryTag: item.dietaryTag,
+      isAlcohol: item.isAlcohol,
+    }));
+
+    setLineItems(mappedItems);
+    setDescription(receiptData.merchantName);
+  }
+
   // ----- GENERIC POOL TOGGLE -----
-  // Instead of writing three near-identical toggle functions (one each for
-  // veg/non-veg/alcohol), this one function handles all three by accepting
-  // WHICH setter to use. Keeps the logic in one place.
   function togglePoolMember(setPool, userId) {
     setPool((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
@@ -53,10 +62,6 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
     setLineItems((prev) => prev.filter((item) => item.id !== id));
   }
 
-  // Updates a single field on a single line item, identified by its local id.
-  // .map() rebuilds the whole array, replacing only the matching row —
-  // everything else in the array stays untouched. This is the standard
-  // React pattern for "update one item inside an array of objects in state."
   function updateLineItem(id, field, value) {
     setLineItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, [field]: value } : item))
@@ -64,12 +69,10 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
   }
 
   // ----- LIVE CALCULATION -----
-  // No useEffect needed here at all. Since this runs directly in the render
-  // body, it recalculates automatically on every render — and every state
-  // change (typing a price, toggling a checkbox) triggers a render anyway.
-  // This is the simplest way to get a "live" preview: just derive it fresh
-  // every time, rather than trying to manually track when to recalculate.
-  const totalAmount = lineItems.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+  const totalAmount = lineItems.reduce(
+    (sum, item) => sum + ((parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1)),
+    0
+  );
   const { balances, allMembers } = calculateSplit(
     lineItems,
     vegMembers,
@@ -77,8 +80,10 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
     alcoholMembers
   );
 
+  // UPDATED: Name lookup with fallback
   function nameById(id) {
-    return availableMembers.find((m) => m._id === id)?.name || 'Unknown';
+    const member = availableMembers.find((m) => m._id === id);
+    return member?.fullName || member?.name || 'Unknown';
   }
 
   async function handleSubmit(e) {
@@ -99,6 +104,7 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
       const res = await fetch('http://localhost:5000/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           group: group._id,
           description,
@@ -107,12 +113,10 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
           vegMembers,
           nonVegMembers,
           alcoholMembers,
-          // Strip our local-only `id` field before sending — the backend
-          // schema doesn't know about it and, thanks to strict: 'throw',
-          // would reject the whole request if we sent it as-is.
           lineItems: lineItems.map(({ id, ...rest }) => ({
             ...rest,
             price: parseFloat(rest.price),
+            quantity: parseInt(rest.quantity) || 1,
           })),
         }),
       });
@@ -140,17 +144,9 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
       </div>
 
       <form className="form form--wide" onSubmit={handleSubmit}>
-        {/* ===== FUTURE: OCR RECEIPT UPLOAD ===== */}
-        {/* Placeholder zone only for now — no logic wired up. When OCR is
-            built, this becomes a real upload input that, on success, calls
-            setLineItems() with the parsed items instead of the user typing
-            each row manually. Everything below it stays exactly the same,
-            since it just operates on `lineItems` state regardless of
-            whether a human or an OCR result populated it. */}
-        <div className="ocr-placeholder">
-          <span className="ocr-placeholder__label">Upload Receipt</span>
-          <span className="ocr-placeholder__note">Coming soon — auto-fill items from a photo</span>
-        </div>
+        
+        {/* ===== REAL AI RECEIPT UPLOAD OVERLAY ===== */}
+        <ReceiptUpload onParsed={handleReceiptParsed} />
 
         <div className="form-field">
           <label className="form-label" htmlFor="expense-desc">Description</label>
@@ -164,6 +160,7 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
           />
         </div>
 
+        {/* UPDATED: Payer dropdown options */}
         <div className="form-field">
           <label className="form-label" htmlFor="paid-by">Paid By</label>
           <select
@@ -174,7 +171,9 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
           >
             <option value="">Select who paid</option>
             {availableMembers.map((m) => (
-              <option key={m._id} value={m._id}>{m.name}</option>
+              <option key={m._id} value={m._id}>
+                {m.fullName || m.name || 'Unknown'}
+              </option>
             ))}
           </select>
         </div>
@@ -209,6 +208,7 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
             <div className="line-item-row line-item-row--header">
               <span>Item</span>
               <span>Price</span>
+              <span>Qty</span>
               <span>Diet</span>
               <span>Alcohol</span>
               <span />
@@ -231,6 +231,14 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
                   placeholder="0"
                   min="0"
                   step="0.01"
+                />
+                <input
+                  type="number"
+                  className="form-input form-input--compact"
+                  value={item.quantity}
+                  onChange={(e) => updateLineItem(item.id, 'quantity', e.target.value)}
+                  min="1"
+                  step="1"
                 />
                 <select
                   className="form-input form-input--compact"
@@ -297,9 +305,7 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
   );
 }
 
-// A small reusable sub-component for the three identical-shaped pool
-// selectors (veg / non-veg / alcohol). Pulling this out avoids writing the
-// same checkbox-list JSX three times with only the label and state differing.
+{/* UPDATED: MemberPool sub-component with fallback */}
 function MemberPool({ label, members, selected, onToggle }) {
   return (
     <div className="member-pool">
@@ -312,7 +318,7 @@ function MemberPool({ label, members, selected, onToggle }) {
               checked={selected.includes(m._id)}
               onChange={() => onToggle(m._id)}
             />
-            <span>{m.name}</span>
+            <span>{m.fullName || m.name || 'Unknown'}</span>
           </label>
         ))}
       </div>
