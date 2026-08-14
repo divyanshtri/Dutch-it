@@ -3,24 +3,25 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Navbar from './components/Navbar';
-import GroupsList from './components/GroupsList';
+import Dashboard from './components/Dashboard';
 import GroupDetail from './components/GroupDetail';
 import CreateGroup from './components/CreateGroup';
 import Friends from './components/Friends';
 import Account from './components/Account';
+import Fab from './components/Fab';
+import SimpleExpenseModal from './components/SimpleExpenseModal';
+import ReceiptScannerModal from './components/ReceiptScannerModal';
 
-// The actual app content, SEPARATE from AuthProvider itself — this is a
-// required pattern: useAuth() only works INSIDE a component that's a
-// descendant of <AuthProvider>, not in the same component that renders
-// the provider. So App just sets up the provider, and everything that
-// needs auth state lives in AppContent underneath it.
 function AppContent() {
   const { isAuthenticated, loading } = useAuth();
   const [authView, setAuthView] = useState('login'); // 'login' | 'signup'
   const [activeNav, setActiveNav] = useState('groups'); // 'groups' | 'friends' | 'account'
   const [searchTerm, setSearchTerm] = useState('');
-  const [view, setView] = useState('list'); // 'list' | 'detail' | 'create' — nested WITHIN the 'groups' tab
+  const [view, setView] = useState('list'); // 'list' | 'detail' | 'create'
   const [selectedGroupId, setSelectedGroupId] = useState(null);
+
+  const [showQuickExpense, setShowQuickExpense] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   function goToDetail(groupId) {
     setSelectedGroupId(groupId);
@@ -34,13 +35,11 @@ function AppContent() {
 
   function handleNavChange(tab) {
     setActiveNav(tab);
-    if (tab === 'groups') setView('list'); // reset to list view whenever returning to Groups tab
+    if (tab === 'groups') setView('list');
   }
 
-  // While checking session on load, show loading state
   if (loading) return <p className="status-text">Loading…</p>;
 
-  // Unauthenticated view
   if (!isAuthenticated) {
     return authView === 'login' ? (
       <Login onSwitchToSignup={() => setAuthView('signup')} />
@@ -49,7 +48,6 @@ function AppContent() {
     );
   }
 
-  // Authenticated view with Navbar navigation
   return (
     <div className="app">
       <Navbar
@@ -57,15 +55,16 @@ function AppContent() {
         onNavChange={handleNavChange}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
-        onNewGroup={() => {
-          setActiveNav('groups');
-          setView('create');
-        }}
       />
 
       <main className="app-main">
         {activeNav === 'groups' && view === 'list' && (
-          <GroupsList onSelectGroup={goToDetail} searchTerm={searchTerm} />
+          <Dashboard
+            onSelectGroup={goToDetail}
+            searchTerm={searchTerm}
+            onNewGroup={() => setView('create')}
+            onAddFriend={() => setActiveNav('friends')}
+          />
         )}
         {activeNav === 'groups' && view === 'detail' && (
           <GroupDetail groupId={selectedGroupId} onBack={goToList} />
@@ -76,6 +75,35 @@ function AppContent() {
         {activeNav === 'friends' && <Friends />}
         {activeNav === 'account' && <Account />}
       </main>
+
+      <Fab
+        onQuickExpense={() => setShowQuickExpense(true)}
+        onScanReceipt={() => setShowScanner(true)}
+      />
+
+      {/* Global Quick Expense Modal */}
+      {showQuickExpense && (
+        <SimpleExpenseModal
+          onClose={() => setShowQuickExpense(false)}
+          onCreated={() => {
+            setShowQuickExpense(false);
+            setActiveNav('groups');
+            setView('list');
+          }}
+        />
+      )}
+
+      {/* Standalone Receipt Scanner Modal */}
+      {showScanner && (
+        <ReceiptScannerModal
+          onClose={() => setShowScanner(false)}
+          onCreated={() => {
+            setShowScanner(false);
+            setActiveNav('groups');
+            setView('list');
+          }}
+        />
+      )}
     </div>
   );
 }

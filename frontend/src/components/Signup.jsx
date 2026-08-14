@@ -3,7 +3,12 @@ import { useAuth } from '../context/AuthContext';
 
 function Signup({ onSwitchToLogin }) {
   const { register } = useAuth();
-  const [form, setForm] = useState({ fullName: '', email: '', phoneNumber: '', password: '' });
+  const [form, setForm] = useState({
+    fullName: '',
+    email: '',
+    phoneNumber: '',
+    password: '',
+  });
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -26,12 +31,16 @@ function Signup({ onSwitchToLogin }) {
   return (
     <div className="auth-screen">
       <div className="auth-panel">
-        <div className="auth-brand">Dutch It</div>
+        <div className="auth-brand">
+          Dutch<span className="accent-dash">-</span>it
+        </div>
         <h2 className="section-title">Create Account</h2>
 
         <form className="form" onSubmit={handleSubmit}>
           <div className="form-field">
-            <label className="form-label" htmlFor="fullName">Full Name</label>
+            <label className="form-label" htmlFor="fullName">
+              Full Name
+            </label>
             <input
               id="fullName"
               type="text"
@@ -42,7 +51,9 @@ function Signup({ onSwitchToLogin }) {
           </div>
 
           <div className="form-field">
-            <label className="form-label" htmlFor="email">Email</label>
+            <label className="form-label" htmlFor="email">
+              Email
+            </label>
             <input
               id="email"
               type="email"
@@ -53,7 +64,9 @@ function Signup({ onSwitchToLogin }) {
           </div>
 
           <div className="form-field">
-            <label className="form-label" htmlFor="phoneNumber">Phone Number</label>
+            <label className="form-label" htmlFor="phoneNumber">
+              Phone Number
+            </label>
             <input
               id="phoneNumber"
               type="tel"
@@ -65,7 +78,9 @@ function Signup({ onSwitchToLogin }) {
           </div>
 
           <div className="form-field">
-            <label className="form-label" htmlFor="password">Password</label>
+            <label className="form-label" htmlFor="password">
+              Password
+            </label>
             <input
               id="password"
               type="password"
@@ -80,14 +95,20 @@ function Signup({ onSwitchToLogin }) {
 
           {error && <p className="status-text status-text--error">{error}</p>}
 
-          <button type="submit" className="btn btn--primary" disabled={isSubmitting}>
+          <button
+            type="submit"
+            className="btn btn--primary"
+            disabled={isSubmitting}
+          >
             {isSubmitting ? 'Creating account…' : 'Create Account'}
           </button>
         </form>
 
         <p className="auth-switch">
           Already have an account?{' '}
-          <button className="back-link" onClick={onSwitchToLogin}>Log in</button>
+          <button className="back-link" onClick={onSwitchToLogin}>
+            Log in
+          </button>
         </p>
       </div>
     </div>

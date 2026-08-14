@@ -43,7 +43,7 @@ const cookieOptions = {
 // ===== POST /api/auth/register =====
 async function register(req, res) {
   try {
-    const { fullName, email, phoneNumber, password, isVegetarian, drinksAlcohol } = req.body;
+    const { fullName, email, phoneNumber, password, isVegetarian, drinksAlcohol, photoURL } = req.body;
 
     if (!fullName || !email || !phoneNumber || !password) {
       return res.status(400).json({ message: 'Full name, email, phone number, and password are all required.' });
@@ -77,6 +77,7 @@ async function register(req, res) {
       password,
       isVegetarian,
       drinksAlcohol,
+      photoURL: photoURL || null,
     });
 
     const savedUser = await newUser.save();
@@ -96,6 +97,7 @@ async function register(req, res) {
         phoneNumber: savedUser.phoneNumber,
         isVegetarian: savedUser.isVegetarian,
         drinksAlcohol: savedUser.drinksAlcohol,
+        photoURL: savedUser.photoURL,
       },
     });
 
@@ -156,6 +158,7 @@ async function login(req, res) {
         phoneNumber: user.phoneNumber,
         isVegetarian: user.isVegetarian,
         drinksAlcohol: user.drinksAlcohol,
+        photoURL: user.photoURL,
       },
     });
 
@@ -187,4 +190,33 @@ function getMe(req, res) {
   res.status(200).json({ user: req.user });
 }
 
-module.exports = { register, login, logout, getMe };
+// ===== PATCH /api/auth/me - Update the logged-in user's own profile =====
+async function updateMe(req, res) {
+  try {
+    const { fullName, photoURL } = req.body;
+    const updates = {};
+
+    if (fullName !== undefined) {
+      if (!fullName.trim()) return res.status(400).json({ message: 'Name cannot be empty.' });
+      updates.fullName = fullName.trim();
+    }
+
+    // photoURL can be a real string OR explicitly null (removing the photo) —
+    // so we check `!== undefined` rather than truthiness, or "remove photo"
+    // (photoURL: null) would be silently ignored.
+    if (photoURL !== undefined) {
+      updates.photoURL = photoURL;
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(req.user._id, updates, {
+      new: true,
+      runValidators: true,
+    });
+    res.status(200).json({ user: updatedUser });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error while updating profile.' });
+  }
+}
+
+module.exports = { register, login, logout, getMe, updateMe };

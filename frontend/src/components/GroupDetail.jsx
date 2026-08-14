@@ -1,17 +1,29 @@
 import { useState, useEffect } from 'react';
 import CreateExpense from './CreateExpense';
 import RecordSettlement from './RecordSettlement';
+import Fab from './Fab';
+import SimpleExpenseModal from './SimpleExpenseModal';
+import DetailSkeleton from './skeletons/DetailSkeleton';
+import FriendSkeleton from './skeletons/FriendSkeleton';
+import Avatar from './Avatar';
 
 function GroupDetail({ groupId, onBack }) {
   const [group, setGroup] = useState(null);
   const [balances, setBalances] = useState([]);
   const [friends, setFriends] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingFriends, setIsLoadingFriends] = useState(false);
   const [error, setError] = useState(null);
-  const [showCreateExpense, setShowCreateExpense] = useState(false);
-  const [settlingDebt, setSettlingDebt] = useState(null);
 
-  // Add Member Modal State
+  // Legacy full-page expense creator toggle
+  const [showCreateExpense, setShowCreateExpense] = useState(false);
+
+  // Modal-based Expense states (via FAB)
+  const [showSimpleModal, setShowSimpleModal] = useState(false);
+  const [initialScanMode, setInitialScanMode] = useState(false);
+
+  // Settlement & Member states
+  const [settlingDebt, setSettlingDebt] = useState(null);
   const [showAddMember, setShowAddMember] = useState(false);
 
   async function fetchGroupData() {
@@ -42,21 +54,23 @@ function GroupDetail({ groupId, onBack }) {
     fetchGroupData();
   }, [groupId]);
 
-  // Fetch friends and open the modal
+  // Fetch friends and open the add-member modal
   async function openAddMember() {
     setShowAddMember(true);
+    setIsLoadingFriends(true);
     try {
       const res = await fetch('http://localhost:5000/api/friends', { credentials: 'include' });
-      if (res.ok) {
-        const friendsData = await res.json();
-        setFriends(friendsData);
-      }
+      if (!res.ok) throw new Error('Failed to load friends.');
+      const data = await res.json();
+      setFriends(data);
     } catch (err) {
-      console.error('Failed to fetch friends for selection:', err);
+      setError(err.message);
+    } finally {
+      setIsLoadingFriends(false);
     }
   }
 
-  // Directly pass friendId on click and update local group state from backend JSON response
+  // Pass friendId on click and update local group state from backend JSON response
   async function handleAddMember(friendId) {
     try {
       const res = await fetch(`http://localhost:5000/api/groups/${groupId}/members`, {
@@ -68,7 +82,7 @@ function GroupDetail({ groupId, onBack }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to add member');
 
-      setGroup(data); // updated, populated group comes straight back from route
+      setGroup(data); // backend returns the updated, populated group directly
       setShowAddMember(false);
     } catch (err) {
       setError(err.message);
@@ -91,10 +105,22 @@ function GroupDetail({ groupId, onBack }) {
     }
   }
 
-  if (isLoading) return <p className="status-text">Loading group…</p>;
+  // FAB Click Handlers
+  function handleOpenQuickExpense() {
+    setInitialScanMode(false);
+    setShowSimpleModal(true);
+  }
+
+  function handleOpenScanReceipt() {
+    setInitialScanMode(true);
+    setShowSimpleModal(true);
+  }
+
+  if (isLoading) return <DetailSkeleton />;
   if (error) return <p className="status-text status-text--error">{error}</p>;
   if (!group) return null;
 
+  // Legacy itemized full-page creation mode
   if (showCreateExpense) {
     return (
       <CreateExpense
@@ -114,6 +140,11 @@ function GroupDetail({ groupId, onBack }) {
     nameById[member._id] = member.fullName || member.name || 'Unknown';
   });
 
+  // Derived list: friends minus anyone already in the group using .toString() comparison
+  const eligibleFriends = friends.filter(
+    (friend) => !group.members.some((member) => member._id.toString() === friend._id.toString())
+  );
+
   return (
     <section>
       <button className="back-link" onClick={onBack}>
@@ -121,18 +152,20 @@ function GroupDetail({ groupId, onBack }) {
       </button>
 
       <div className="section-header">
-        <h2 className="section-title">{group.name}</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <h2 className="section-title">
+          {group.name}{' '}
           <span className="section-count">
-            {group.members.length} member{group.members.length !== 1 ? 's' : ''}
+            ({group.members.length} member{group.members.length !== 1 ? 's' : ''})
           </span>
-          <button className="btn btn--ghost" onClick={openAddMember}>
+        </h2>
+        <div className="section-header__actions">
+          <button className="btn btn--ghost btn--nav" onClick={openAddMember}>
             + Add Member
           </button>
-          <button className="btn btn--primary" onClick={() => setShowCreateExpense(true)}>
-            + Add Expense
+          <button className="btn btn--ghost btn--nav" onClick={() => setShowCreateExpense(true)}>
+            + Itemized Split
           </button>
-          <button className="btn btn--ghost" onClick={handleDeleteGroup}>
+          <button className="btn btn--ghost btn--nav" onClick={handleDeleteGroup}>
             Delete Group
           </button>
         </div>
@@ -142,7 +175,7 @@ function GroupDetail({ groupId, onBack }) {
       <div className="members-row">
         {group.members.map((member) => (
           <span key={member._id} className="member-chip">
-            {member.fullName || member.name || 'Unknown'}
+            <Avatar user={member} size={20} /> {member.fullName || member.name || 'Unknown'}
           </span>
         ))}
       </div>
@@ -176,26 +209,55 @@ function GroupDetail({ groupId, onBack }) {
         )}
       </div>
 
+      {/* ----- FLOATING ACTION BUTTON ----- */}
+      <Fab
+        onQuickExpense={handleOpenQuickExpense}
+        onScanReceipt={handleOpenScanReceipt}
+      />
+
+      {/* ----- SIMPLE EXPENSE MODAL ----- */}
+      {showSimpleModal && (
+        <SimpleExpenseModal
+          group={group}
+          initialScan={initialScanMode}
+          onClose={() => setShowSimpleModal(false)}
+          onCreated={() => {
+            setShowSimpleModal(false);
+            fetchGroupData();
+          }}
+        />
+      )}
+
       {/* ----- ADD MEMBER MODAL ----- */}
       {showAddMember && (
         <div className="modal-backdrop" onClick={() => setShowAddMember(false)}>
           <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
             <h3 className="subsection-title">Add Member</h3>
-            <div className="member-select-list">
-              {friends
-                .filter((f) => !group.members.some((m) => m._id === f._id))
-                .map((f) => (
+
+            {isLoadingFriends ? (
+              <FriendSkeleton rows={3} />
+            ) : eligibleFriends.length === 0 ? (
+              <p className="status-text">No eligible friends to add.</p>
+            ) : (
+              <div className="member-select-list">
+                {eligibleFriends.map((friend) => (
                   <div
-                    key={f._id}
+                    key={friend._id}
                     className="member-select-row"
-                    onClick={() => handleAddMember(f._id)}
+                    onClick={() => handleAddMember(friend._id)}
                     style={{ cursor: 'pointer' }}
                   >
-                    <span className="member-select-row__name">
-                      {f.fullName || f.name || 'Unknown'}
-                    </span>
+                    <span className="member-select-row__name">{friend.fullName}</span>
+                    <span className="member-select-row__tags">{friend.email}</span>
                   </div>
                 ))}
+              </div>
+            )}
+
+            <div className="modal-actions">
+              <button type="button" className="btn btn--ghost" onClick={() => setShowAddMember(false)}>
+                Close
+              </button>
             </div>
           </div>
         </div>

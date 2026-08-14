@@ -3,10 +3,10 @@ const router = express.Router();
 
 const Expense = require('../models/Expense');
 const Group = require('../models/Group');
-const calculateSplit = require('../utils/splitCalculator'); // <-- now imported, not defined here
+const calculateSplit = require('../utils/splitCalculator');
 const protect = require('../middleware/authMiddleware');
 
-router.use(protect)
+router.use(protect);
 
 // ===== GET /api/expenses - fetch all expenses (for debugging/testing) =====
 router.get('/', async (req, res) => {
@@ -19,33 +19,83 @@ router.get('/', async (req, res) => {
   }
 });
 
-
+// ===== POST /api/expenses - create a new expense =====
 router.post('/', async (req, res) => {
   try {
+    const { group, description, totalAmount, paidBy, splitType = 'itemized' } = req.body;
+
+    if (!group || !description || !totalAmount || !paidBy) {
+      return res
+        .status(400)
+        .json({ message: 'group, description, totalAmount, and paidBy are required.' });
+    }
+
+    const groupExists = await Group.findById(group);
+    if (!groupExists) {
+      return res.status(404).json({ message: 'Group not found.' });
+    }
+
+    // ----- NON-ITEMIZED PATH (equally, unequally, percentage) -----
+    if (splitType !== 'itemized') {
+      const { splits } = req.body;
+      if (!Array.isArray(splits) || splits.length === 0) {
+        return res
+          .status(400)
+          .json({ message: 'splits array is required for this split type.' });
+      }
+
+      // Re-validate split totals server-side
+      const sum = splits.reduce((s, x) => s + (x.amount || 0), 0);
+      if (Math.abs(sum - totalAmount) > 0.5) {
+        return res.status(400).json({
+          message: `Split amounts (₹${sum.toFixed(2)}) don't add up to the total (₹${totalAmount}).`,
+        });
+      }
+
+      if (splitType === 'percentage') {
+        const pctSum = splits.reduce((s, x) => s + (x.percentage || 0), 0);
+        if (Math.abs(pctSum - 100) > 0.5) {
+          return res.status(400).json({
+            message: `Percentages sum to ${pctSum.toFixed(1)}%, not 100%.`,
+          });
+        }
+      }
+
+      const newExpense = new Expense({
+        group,
+        description,
+        totalAmount,
+        paidBy,
+        splitType,
+        splits,
+      });
+
+      const savedExpense = await newExpense.save();
+
+      const settlement = splits
+        .filter((s) => s.user.toString() !== paidBy.toString())
+        .map((s) => ({
+          userId: s.user,
+          theirShareOfBill: s.amount,
+          amountTheyOwe: s.amount,
+          owesTo: paidBy,
+        }));
+
+      return res.status(201).json({ expense: savedExpense, settlement });
+    }
+
+    // ----- ITEMIZED PATH -----
     const {
-      group,
-      description,
-      totalAmount,
-      paidBy,
       lineItems,
       vegMembers = [],
       nonVegMembers = [],
       alcoholMembers = [],
     } = req.body;
 
-    if (!group || !description || !totalAmount || !paidBy || !lineItems) {
-      return res.status(400).json({
-        message: 'group, description, totalAmount, paidBy, and lineItems are all required.',
-      });
-    }
-
     if (!Array.isArray(lineItems) || lineItems.length === 0) {
-      return res.status(400).json({ message: 'lineItems must be a non-empty array.' });
-    }
-
-    const groupExists = await Group.findById(group);
-    if (!groupExists) {
-      return res.status(404).json({ message: 'Group not found.' });
+      return res
+        .status(400)
+        .json({ message: 'lineItems must be a non-empty array for itemized splits.' });
     }
 
     const { balances, allMembers } = calculateSplit(
@@ -55,9 +105,6 @@ router.post('/', async (req, res) => {
       alcoholMembers
     );
 
-    // IMPORTANT CHANGE: we now save vegMembers/nonVegMembers/alcoholMembers
-    // alongside the raw lineItems, so this bill's split can be recomputed
-    // later by the balances engine without needing the original request again.
     const newExpense = new Expense({
       group,
       description,
@@ -67,12 +114,13 @@ router.post('/', async (req, res) => {
       vegMembers,
       nonVegMembers,
       alcoholMembers,
+      splitType: 'itemized',
     });
 
     const savedExpense = await newExpense.save();
 
     const settlement = allMembers.map((userId) => {
-      const isPayer = userId === paidBy;
+      const isPayer = userId.toString() === paidBy.toString();
       return {
         userId,
         theirShareOfBill: balances[userId],
@@ -82,14 +130,13 @@ router.post('/', async (req, res) => {
       };
     });
 
-    res.status(201).json({ expense: savedExpense, settlement });
-
+    return res.status(201).json({ expense: savedExpense, settlement });
   } catch (error) {
     if (error.name === 'ValidationError') {
       return res.status(400).json({ message: error.message });
     }
     console.error(error);
-    res.status(500).json({ message: 'Server error while creating expense.' });
+    return res.status(500).json({ message: 'Server error while creating expense.' });
   }
 });
 

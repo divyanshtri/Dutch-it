@@ -14,7 +14,10 @@ router.use(protect);
 // ===== GET /api/groups - Fetch ONLY groups the logged-in user belongs to =====
 router.get('/', async (req, res) => {
   try {
-    const groups = await Group.find({ members: req.user._id }).populate('members', 'fullName email');
+    const groups = await Group.find({ members: req.user._id }).populate(
+      'members',
+      'fullName email photoURL'
+    );
     res.status(200).json(groups);
   } catch (error) {
     console.error(error);
@@ -60,8 +63,8 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const group = await Group.findById(id)
-      .populate('members', 'fullName email name')
-      .populate('createdBy', 'fullName email');
+      .populate('members', 'fullName email photoURL')
+      .populate('createdBy', 'fullName email photoURL');
 
     if (!group) {
       return res.status(404).json({ message: 'Group not found.' });
@@ -131,8 +134,8 @@ router.post('/:id/members', async (req, res) => {
     await group.save();
 
     const updatedGroup = await Group.findById(req.params.id)
-      .populate('members', 'fullName email name')
-      .populate('createdBy', 'fullName email');
+      .populate('members', 'fullName email photoURL')
+      .populate('createdBy', 'fullName email photoURL');
 
     res.status(200).json(updatedGroup);
   } catch (error) {
@@ -165,14 +168,25 @@ router.get('/:id/balances', async (req, res) => {
     }
 
     expenses.forEach((expense) => {
+      const payerId = expense.paidBy.toString();
+
+      // Non-itemized branch: direct custom splits (equally, unequally, percentage)
+      if (expense.splitType && expense.splitType !== 'itemized') {
+        expense.splits.forEach((s) => {
+          const userId = s.user.toString();
+          if (userId === payerId) return;
+          addDebt(userId, payerId, s.amount);
+        });
+        return; // skip calculateSplit path
+      }
+
+      // Itemized branch: receipt line items calculation
       const { balances } = calculateSplit(
         expense.lineItems,
         expense.vegMembers,
         expense.nonVegMembers,
         expense.alcoholMembers
       );
-
-      const payerId = expense.paidBy.toString();
 
       Object.keys(balances).forEach((userId) => {
         if (userId === payerId) return;

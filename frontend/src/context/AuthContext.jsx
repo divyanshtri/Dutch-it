@@ -2,8 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
-// A custom hook so components use `const { user, login } = useAuth();`
-// instead of importing useContext + AuthContext everywhere separately.
+// Custom hook so components can call `const { user, login } = useAuth();`
 export function useAuth() {
   return useContext(AuthContext);
 }
@@ -11,21 +10,12 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  // loading starts true because on first page load, we don't yet know if
-  // the user has a valid session cookie or not — we have to ask the
-  // server first (GET /me) before we can render either "logged in" or
-  // "logged out" UI. Without this, the app would flash a "logged out"
-  // state for a split second even for a returning, already-logged-in user.
 
-  // Checks whether a valid session cookie already exists, on first app load.
+  // Checks whether a valid session cookie already exists on initial load
   async function checkAuth() {
     try {
       const res = await fetch('http://localhost:5000/api/auth/me', {
         credentials: 'include',
-        // credentials: 'include' is REQUIRED on every fetch() call that
-        // needs to send/receive cookies cross-origin. Without this on
-        // EVERY request (not just login), the browser won't attach the
-        // httpOnly cookie at all, and the backend will see no token.
       });
       if (res.ok) {
         const data = await res.json();
@@ -78,6 +68,20 @@ export function AuthProvider({ children }) {
     setUser(null);
   }
 
+  // Generalized updateProfile to accept an object payload (e.g., { fullName }, { photoURL }, or both)
+  async function updateProfile(updates) {
+    const res = await fetch('http://localhost:5000/api/auth/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(updates),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Failed to update profile.');
+    setUser(data.user); // immediately reflects across the application
+    return data.user;
+  }
+
   const value = {
     user,
     isAuthenticated: !!user,
@@ -85,6 +89,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,7 +1,7 @@
 const { GoogleGenAI } = require('@google/genai');
 
 const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
-const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-2.5-flash-lite';
+const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.1-flash-lite';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -115,7 +115,7 @@ async function parseReceiptImage(imageBuffer, mimeType) {
   const base64Image = imageBuffer.toString('base64');
   const maxAttemptsPerModel = 2;
 
-  // Outer loop: Try primary model (gemini-3.5-flash) first, then fallback model (gemini-2.5-flash-lite)
+  // Outer loop: Try primary model first, then fallback model
   for (const modelName of [PRIMARY_MODEL, FALLBACK_MODEL]) {
     for (let attempt = 1; attempt <= maxAttemptsPerModel; attempt++) {
       try {
@@ -129,6 +129,19 @@ async function parseReceiptImage(imageBuffer, mimeType) {
           error.status === 429 ||
           error.message?.includes('503') ||
           error.message?.includes('429');
+
+        const isModelUnavailable = error.status === 404;
+
+        if (isModelUnavailable) {
+          // A 404 means THIS model name is wrong/retired — retrying the SAME
+          // model won't ever help, unlike a 503. Log distinctly so a future
+          // "why is this failing" search points straight at the model string,
+          // not at "maybe it's just overloaded, wait and see."
+          console.error(
+            `Model "${modelName}" is unavailable (404) — check GEMINI_MODEL / GEMINI_FALLBACK_MODEL env vars.`
+          );
+          break; // skip remaining retries for this model, move to fallback immediately — no point waiting
+        }
 
         const isLastAttemptForThisModel = attempt === maxAttemptsPerModel;
 

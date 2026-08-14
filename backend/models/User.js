@@ -42,6 +42,11 @@ const userSchema = new mongoose.Schema(
       // if the schema itself refuses to return it unless asked.
       select: false,
     },
+    photoURL: {
+      type: String,
+      default: null,
+    },
+
 
     // ----- FRIENDS LIST -----
     // Stores array of User ObjectIds to support friend additions and populate operations

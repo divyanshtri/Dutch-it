@@ -5,6 +5,14 @@ const protect = require('../middleware/authMiddleware');
 
 router.use(protect);
 
+// Helper function to handle phone number formats automatically
+function normalizePhone(input) {
+  const digits = input.replace(/\D/g, ''); // strip non-digits
+  if (digits.length === 10) return `+91${digits}`; // bare 10-digit -> assume +91
+  if (digits.length === 12 && digits.startsWith('91')) return `+${digits}`;
+  return input.startsWith('+') ? input : `+${digits}`;
+}
+
 // ===== GET /api/friends - Fetch the logged-in user's friends list =====
 router.get('/', async (req, res) => {
   try {
@@ -15,7 +23,7 @@ router.get('/', async (req, res) => {
     // middleware's req.user was fetched without population.
     const currentUser = await User.findById(req.user._id).populate(
       'friends',
-      'fullName email phoneNumber' // only pull these fields, not passwords or anything unnecessary
+      'fullName email phoneNumber photoURL' // include photoURL along with public info
     );
 
     res.status(200).json(currentUser.friends);
@@ -28,15 +36,18 @@ router.get('/', async (req, res) => {
 // ===== POST /api/friends/add - Add a friend by email or phone =====
 router.post('/add', async (req, res) => {
   try {
-    const { identifier } = req.body; // email OR phone number, same pattern as login
+    const { identifier } = req.body; // email OR phone number
 
     if (!identifier) {
       return res.status(400).json({ message: 'Provide an email or phone number.' });
     }
 
-    const friendUser = await User.findOne({
-      $or: [{ email: identifier.toLowerCase() }, { phoneNumber: identifier }],
-    });
+    const isEmail = identifier.includes('@');
+    const query = isEmail
+      ? { email: identifier.toLowerCase() }
+      : { $or: [{ phoneNumber: identifier }, { phoneNumber: normalizePhone(identifier) }] };
+
+    const friendUser = await User.findOne(query);
 
     if (!friendUser) {
       return res.status(404).json({ message: 'No user found with that email or phone number.' });
@@ -59,11 +70,7 @@ router.post('/add', async (req, res) => {
     }
 
     // Mutual add: push each user into the other's friends array, then
-    // save both. Not wrapped in a transaction — for a hobby-scale app this
-    // is an acceptable simplification, but worth knowing: if the server
-    // crashed exactly between these two saves, you could end up with a
-    // one-directional friendship. Flagging this as a known simplification,
-    // not something to fix right now.
+    // save both.
     currentUser.friends.push(friendUser._id);
     friendUser.friends.push(currentUser._id);
 
@@ -76,6 +83,7 @@ router.post('/add', async (req, res) => {
         fullName: friendUser.fullName,
         email: friendUser.email,
         phoneNumber: friendUser.phoneNumber,
+        photoURL: friendUser.photoURL,
       },
     });
   } catch (error) {

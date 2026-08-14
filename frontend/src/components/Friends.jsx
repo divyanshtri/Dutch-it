@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import FriendSkeleton from './skeletons/FriendSkeleton';
+import Avatar from './Avatar';
 
 function Friends() {
   const [friends, setFriends] = useState([]);
@@ -11,7 +13,9 @@ function Friends() {
   async function fetchFriends() {
     try {
       setIsLoading(true);
-      const res = await fetch('http://localhost:5000/api/friends', { credentials: 'include' });
+      const res = await fetch('http://localhost:5000/api/friends', {
+        credentials: 'include',
+      });
       const data = await res.json();
       setFriends(data);
     } catch {
@@ -44,12 +48,11 @@ function Friends() {
         body: JSON.stringify({ identifier }),
       });
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.message || 'Failed to add friend.');
 
       setSuccessMsg(data.message);
       setIdentifier('');
-      fetchFriends(); // refresh the list so the new friend shows up immediately
+      fetchFriends();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -60,36 +63,49 @@ function Friends() {
   return (
     <section>
       <div className="section-header">
-        <h2 className="section-title">Friends</h2>
-        <span className="section-count">{friends.length}</span>
+        <h2 className="section-title">
+          Friends <span className="section-count">({friends.length})</span>
+        </h2>
       </div>
 
-      <form className="form add-friend-form" onSubmit={handleAddFriend}>
+      <form className="friends-add-row" onSubmit={handleAddFriend}>
         <input
           type="text"
-          className="form-input"
+          className="input-flat"
           placeholder="Friend's email or phone number"
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
         />
-        <button type="submit" className="btn btn--primary" disabled={isSubmitting}>
-          {isSubmitting ? 'Adding…' : 'Add Friend'}
+        <button type="submit" className="btn-accent" disabled={isSubmitting}>
+          <span
+            className="material-symbols-outlined"
+            style={{ fontSize: '18px' }}
+          >
+            person_add
+          </span>
         </button>
       </form>
 
       {error && <p className="status-text status-text--error">{error}</p>}
-      {successMsg && <p className="status-text status-text--success">{successMsg}</p>}
+      {successMsg && (
+        <p className="status-text status-text--success">{successMsg}</p>
+      )}
 
       {isLoading ? (
-        <p className="status-text">Loading friends…</p>
+        <FriendSkeleton />
       ) : friends.length === 0 ? (
-        <p className="status-text">No friends yet. Add someone by email or phone above.</p>
+        <p className="status-text">
+          No friends yet. Add someone by email or phone above.
+        </p>
       ) : (
-        <div className="member-select-list">
+        <div className="friends-list">
           {friends.map((friend) => (
-            <div key={friend._id} className="member-select-row">
-              <span className="member-select-row__name">{friend.fullName}</span>
-              <span className="member-select-row__tags">{friend.email}</span>
+            <div key={friend._id} className="surface-panel friend-tile">
+              <Avatar user={friend} size={44} />
+              <div className="friend-tile__stack">
+                <span className="friend-tile__name">{friend.fullName}</span>
+                <span className="friend-tile__email">{friend.email}</span>
+              </div>
             </div>
           ))}
         </div>
