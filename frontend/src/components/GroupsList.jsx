@@ -42,19 +42,27 @@ function GroupsList({ onSelectGroup, searchTerm, onNewGroup, onAddFriend }) {
           Your Groups <span className="section-count">({filteredGroups.length})</span>
         </h2>
         <div className="section-header__actions">
-          <button className="btn-ghost" onClick={onAddFriend}>
-            <span className="font-bold">+</span> Friend
-          </button>
-          <button className="btn-accent" onClick={onNewGroup}>
-            <span className="font-bold">+</span> New Group
+          <button 
+            className="icon-btn icon-btn--accent" 
+            onClick={onAddFriend} 
+            title="Add Friend"
+            aria-label="Add Friend"
+          >
+            <span className="material-symbols-outlined">person_add</span>
           </button>
         </div>
       </div>
 
       {filteredGroups.length === 0 ? (
-        <p className="status-text">
-          {groups.length === 0 ? 'No groups yet. Create one to get started.' : 'No groups match your search.'}
-        </p>
+        groups.length === 0 ? (
+          <div className="groups-tile-grid">
+            <div className="group-tile group-tile--add" onClick={onNewGroup}>
+              <span className="group-tile--add__plus">+</span>
+            </div>
+          </div>
+        ) : (
+          <p className="status-text">No groups match your search.</p>
+        )
       ) : (
         <div className="groups-tile-grid">
           {filteredGroups.map((group) => (
@@ -70,6 +78,11 @@ function GroupsList({ onSelectGroup, searchTerm, onNewGroup, onAddFriend }) {
               </span>
             </div>
           ))}
+
+          {/* Translucent card to add new group */}
+          <div className="group-tile group-tile--add" onClick={onNewGroup}>
+            <span className="group-tile--add__plus">+</span>
+          </div>
         </div>
       )}
     </section>

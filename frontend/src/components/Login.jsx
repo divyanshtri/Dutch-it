@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import Logo from './Logo';
 
 function Login({ onSwitchToSignup }) {
   const { login } = useAuth();
@@ -25,8 +26,8 @@ function Login({ onSwitchToSignup }) {
   return (
     <div className="auth-screen">
       <div className="auth-panel">
-        <div className="auth-brand">
-          Dutch<span className="accent-dash">-</span>it
+        <div className="auth-brand-wrap">
+          <Logo />
         </div>
         <h2 className="section-title">Log In</h2>
 

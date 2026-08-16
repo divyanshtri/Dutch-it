@@ -604,12 +604,9 @@ body {
   box-shadow: var(--clay-shadow-raised-lg);
 }
 
-.auth-brand {
-  font-family: var(--font-display);
-  font-weight: var(--weight-display);
-  font-size: 1.85rem;
-  letter-spacing: -0.02em;
-  text-align: center;
+.auth-brand-wrap {
+  display: flex;
+  justify-content: center;
   margin-bottom: var(--space-lg);
 }
 
@@ -636,6 +633,7 @@ body {
   justify-content: center;
   gap: var(--space-sm);
   padding: var(--space-xl) var(--space-md);
+  border-radius: 24px;
   cursor: pointer;
   transition: filter 0.2s ease;
 }
@@ -730,6 +728,33 @@ body {
 
 .group-row__arrow {
   color: var(--color-slate);
+}
+
+/* Dotted "Add Group" Tile Card (Orange Accent Override) */
+.group-tile--add {
+  background: rgba(236, 48, 19, 0.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px dashed rgba(236, 48, 19, 0.35) !important;
+  box-shadow: none;
+  transition: all 0.2s ease;
+}
+
+.group-tile--add:hover {
+  background: rgba(236, 48, 19, 0.12);
+  border-color: var(--color-accent) !important;
+}
+
+.group-tile--add__plus {
+  font-size: 2rem;
+  font-weight: 300;
+  color: var(--color-accent);
+  line-height: 1;
+}
+
+.group-tile--add:hover .group-tile--add__plus {
+  color: var(--color-accent);
+  transform: scale(1.1);
 }
 
 /* ----------------------------------------------------------------------------
@@ -1432,18 +1457,19 @@ body {
   margin-bottom: var(--space-md);
 }
 
+/* Base Icon Button */
 .icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  background: none;
+  width: 36px;
+  height: 36px;
+  background: rgba(28, 28, 28, 0.8) !important;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: 12px;
   color: var(--color-slate);
   cursor: pointer;
-  transition: border-color var(--t-fast), color var(--t-fast);
+  transition: all var(--t-fast);
 }
 
 .icon-btn:hover {
@@ -1452,8 +1478,27 @@ body {
 }
 
 .icon-btn svg {
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
+}
+
+/* Accent Icon Button (Add Friend Action Override) */
+.icon-btn--accent {
+  width: 36px;
+  height: 36px;
+  background: rgba(236, 48, 19, 0.1) !important;
+  color: var(--color-accent) !important;
+  border: 1px solid rgba(236, 48, 19, 0.35) !important;
+}
+
+.icon-btn--accent:hover {
+  background: rgba(236, 48, 19, 0.22) !important;
+  border-color: var(--color-accent) !important;
+}
+
+.icon-btn--accent svg,
+.icon-btn--accent span {
+  color: var(--color-accent) !important;
 }
 
 .account-footer {
@@ -1575,6 +1620,23 @@ body {
 .status-text--success {
   margin: 10px 0;
   display: block;
+}
+
+/* ===== FRIEND MENU OVERLAYS ===== */
+.friend-tile__menu-wrap { 
+  position: relative; 
+  margin-left: auto; 
+}
+
+.friend-tile__menu {
+  top: calc(100% + 6px);
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.friend-tile__menu button:hover { 
+  color: var(--color-danger); 
 }
 
 /* ===== ACCOUNT PHOTO BLOCK & PENCIL OVERLAY ===== */

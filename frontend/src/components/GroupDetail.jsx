@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 import CreateExpense from './CreateExpense';
 import RecordSettlement from './RecordSettlement';
 import Fab from './Fab';
@@ -8,6 +9,7 @@ import FriendSkeleton from './skeletons/FriendSkeleton';
 import Avatar from './Avatar';
 
 function GroupDetail({ groupId, onBack }) {
+  const { user } = useAuth();
   const [group, setGroup] = useState(null);
   const [balances, setBalances] = useState([]);
   const [friends, setFriends] = useState([]);
@@ -105,6 +107,20 @@ function GroupDetail({ groupId, onBack }) {
     }
   }
 
+  async function handleNudge(toUserId, amount) {
+    try {
+      const res = await fetch('http://localhost:5000/api/nudges', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ groupId, toUserId, amount }),
+      });
+      if (!res.ok) throw new Error('Failed to send nudge.');
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   // FAB Click Handlers
   function handleOpenQuickExpense() {
     setInitialScanMode(false);
@@ -191,15 +207,18 @@ function GroupDetail({ groupId, onBack }) {
             {balances.map((debt, index) => (
               <div key={index} className="balance-row">
                 <span className="balance-row__names">
-                  <strong>{nameById[debt.owes]}</strong> owes{' '}
-                  <strong>{nameById[debt.owedTo]}</strong>
+                  <strong>{nameById[debt.owes]}</strong> owes <strong>{nameById[debt.owedTo]}</strong>
                 </span>
                 <span className="balance-row__right">
                   <span className="balance-row__amount">₹{debt.amount.toFixed(2)}</span>
-                  <button
-                    className="btn btn--ghost btn--small"
-                    onClick={() => setSettlingDebt(debt)}
-                  >
+
+                  {user?._id === debt.owedTo && (
+                    <button className="btn btn--ghost btn--small" onClick={() => handleNudge(debt.owes, debt.amount)}>
+                      Nudge
+                    </button>
+                  )}
+
+                  <button className="btn btn--ghost btn--small" onClick={() => setSettlingDebt(debt)}>
                     Settle Up
                   </button>
                 </span>

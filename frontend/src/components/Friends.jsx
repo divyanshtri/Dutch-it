@@ -1,6 +1,82 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import FriendSkeleton from './skeletons/FriendSkeleton';
 import Avatar from './Avatar';
+
+function UserPlusIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ width: '18px', height: '18px' }}
+    >
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <line x1="19" y1="8" x2="19" y2="14" />
+      <line x1="16" y1="11" x2="22" y2="11" />
+    </svg>
+  );
+}
+
+function MoreVertIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+      <circle cx="12" cy="5" r="1.5" />
+      <circle cx="12" cy="12" r="1.5" />
+      <circle cx="12" cy="19" r="1.5" />
+    </svg>
+  );
+}
+
+function FriendRow({ friend, onUnfriend }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="surface-panel friend-tile">
+      <Avatar user={friend} size={44} />
+      <div className="friend-tile__stack">
+        <span className="friend-tile__name">{friend.fullName}</span>
+        <span className="friend-tile__email">{friend.email}</span>
+      </div>
+
+      <div className="friend-tile__menu-wrap" ref={menuRef}>
+        <button
+          className="icon-btn icon-btn--accent"
+          onClick={() => setMenuOpen((v) => !v)}
+          aria-label="Friend options"
+        >
+          <MoreVertIcon />
+        </button>
+        {menuOpen && (
+          <div className="photo-edit-menu friend-tile__menu">
+            <button
+              onClick={() => {
+                onUnfriend(friend._id);
+                setMenuOpen(false);
+              }}
+            >
+              Unfriend
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function Friends() {
   const [friends, setFriends] = useState([]);
@@ -9,6 +85,7 @@ function Friends() {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   async function fetchFriends() {
     try {
@@ -17,7 +94,7 @@ function Friends() {
         credentials: 'include',
       });
       const data = await res.json();
-      setFriends(data);
+      setFriends(Array.isArray(data) ? data : []);
     } catch {
       setError('Could not load friends.');
     } finally {
@@ -52,11 +129,27 @@ function Friends() {
 
       setSuccessMsg(data.message);
       setIdentifier('');
+      setShowAddForm(false);
       fetchFriends();
     } catch (err) {
       setError(err.message);
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleUnfriend(friendId) {
+    setError(null);
+    setSuccessMsg(null);
+    try {
+      const res = await fetch(`http://localhost:5000/api/friends/${friendId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to remove friend.');
+      fetchFriends();
+    } catch (err) {
+      setError(err.message);
     }
   }
 
@@ -66,25 +159,40 @@ function Friends() {
         <h2 className="section-title">
           Friends <span className="section-count">({friends.length})</span>
         </h2>
+        <button
+          className="icon-btn icon-btn--accent"
+          onClick={() => setShowAddForm((prev) => !prev)}
+          aria-label="Add friend"
+        >
+          <UserPlusIcon />
+        </button>
       </div>
 
-      <form className="friends-add-row" onSubmit={handleAddFriend}>
-        <input
-          type="text"
-          className="input-flat"
-          placeholder="Friend's email or phone number"
-          value={identifier}
-          onChange={(e) => setIdentifier(e.target.value)}
-        />
-        <button type="submit" className="btn-accent" disabled={isSubmitting}>
-          <span
-            className="material-symbols-outlined"
-            style={{ fontSize: '18px' }}
+      {showAddForm && (
+        <form className="friends-add-row" onSubmit={handleAddFriend}>
+          <input
+            type="text"
+            className="input-flat"
+            placeholder="Friend's email or phone number"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            autoFocus
+          />
+          <button
+            type="submit"
+            className="icon-btn icon-btn--accent"
+            disabled={isSubmitting}
+            aria-label="Submit add friend"
           >
-            person_add
-          </span>
-        </button>
-      </form>
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: '18px' }}
+            >
+              person_add
+            </span>
+          </button>
+        </form>
+      )}
 
       {error && <p className="status-text status-text--error">{error}</p>}
       {successMsg && (
@@ -100,13 +208,11 @@ function Friends() {
       ) : (
         <div className="friends-list">
           {friends.map((friend) => (
-            <div key={friend._id} className="surface-panel friend-tile">
-              <Avatar user={friend} size={44} />
-              <div className="friend-tile__stack">
-                <span className="friend-tile__name">{friend.fullName}</span>
-                <span className="friend-tile__email">{friend.email}</span>
-              </div>
-            </div>
+            <FriendRow
+              key={friend._id}
+              friend={friend}
+              onUnfriend={handleUnfriend}
+            />
           ))}
         </div>
       )}

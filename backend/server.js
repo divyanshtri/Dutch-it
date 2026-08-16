@@ -11,6 +11,7 @@ const settlementRoutes = require('./routes/settlementRoutes');
 const receiptRoutes = require('./routes/receiptRoutes');
 const friendRoutes = require('./routes/friendRoutes');
 const activityRoutes = require('./routes/activityRoutes'); // Activity feed route
+const nudgeRoutes = require('./routes/nudgeRoutes');
 
 const cookieParser = require('cookie-parser');
 
@@ -35,6 +36,7 @@ app.use('/api/settlements', settlementRoutes);
 app.use('/api/receipts', receiptRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/activity', activityRoutes); // Mounted activity feed endpoint
+app.use('/api/nudges', nudgeRoutes);
 
 // ===== DATABASE CONNECTION =====
 mongoose.connect(process.env.MONGO_URI)

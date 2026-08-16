@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Avatar from './Avatar';
+import Logo from './Logo';
 
 function Navbar({ activeNav, onNavChange, searchTerm, onSearchChange }) {
   const { user } = useAuth();
@@ -11,9 +12,10 @@ function Navbar({ activeNav, onNavChange, searchTerm, onSearchChange }) {
     <div className="navbar-float-wrap">
       <header className={`navbar-pill ${searchOpen ? 'navbar-pill--expanded' : ''}`}>
         <div className="navbar-pill__row">
-          <span className="app-header__logo app-header__logo--pill" onClick={() => onNavChange('groups')}>
-            Dutch<span className="accent-dash">-</span>it
-          </span>
+          <Logo 
+            className="app-header__logo--pill" 
+            onClick={() => onNavChange('groups')} 
+          />
 
           <nav className="navbar-pill__links">
             {['groups', 'friends'].map((tab) => (
@@ -56,4 +58,5 @@ function Navbar({ activeNav, onNavChange, searchTerm, onSearchChange }) {
     </div>
   );
 }
+
 export default Navbar;

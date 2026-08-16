@@ -3,19 +3,22 @@ const router = express.Router();
 const Group = require('../models/Group');
 const Expense = require('../models/Expense');
 const Settlement = require('../models/Settlement');
+const Nudge = require('../models/Nudge');
 const protect = require('../middleware/authMiddleware');
 
 router.use(protect);
 
-// ===== GET /api/activity - Recent expenses & settlements across the user's groups =====
+// ===== GET /api/activity - Recent expenses, settlements, & nudges across user's groups =====
 router.get('/', async (req, res) => {
   try {
     const groups = await Group.find({ members: req.user._id }).select('_id name');
     const groupIds = groups.map((g) => g._id);
     const groupNameById = {};
-    groups.forEach((g) => { groupNameById[g._id.toString()] = g.name; });
+    groups.forEach((g) => {
+      groupNameById[g._id.toString()] = g.name;
+    });
 
-    const [expenses, settlements] = await Promise.all([
+    const [expenses, settlements, nudges] = await Promise.all([
       Expense.find({ group: { $in: groupIds } })
         .populate('paidBy', 'fullName photoURL')
         .sort({ createdAt: -1 })
@@ -23,6 +26,10 @@ router.get('/', async (req, res) => {
       Settlement.find({ group: { $in: groupIds } })
         .populate('payer', 'fullName photoURL')
         .populate('receiver', 'fullName photoURL')
+        .sort({ createdAt: -1 })
+        .limit(15),
+      Nudge.find({ toUser: req.user._id, group: { $in: groupIds } })
+        .populate('fromUser', 'fullName photoURL')
         .sort({ createdAt: -1 })
         .limit(15),
     ]);
@@ -48,10 +55,18 @@ router.get('/', async (req, res) => {
       receiverPhotoURL: s.receiver?.photoURL || null,
     }));
 
-    // Merge both event types and re-sort by time, then cap to the 15 most
-    // recent overall — each source was already capped individually, but
-    // merging two sorted lists of 15 needs a final re-sort + trim.
-    const combined = [...expenseEvents, ...settlementEvents]
+    const nudgeEvents = nudges.map((n) => ({
+      id: n._id.toString(),
+      type: 'nudge',
+      text: `${n.fromUser?.fullName || 'Someone'} sent you a payment nudge for ₹${n.amount.toFixed(2)}`,
+      amount: n.amount,
+      groupName: groupNameById[n.group.toString()],
+      createdAt: n.createdAt,
+      photoURL: n.fromUser?.photoURL || null,
+    }));
+
+    // Merge all event types, sort descending by creation date, and cap at 15
+    const combined = [...expenseEvents, ...settlementEvents, ...nudgeEvents]
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 15);
 

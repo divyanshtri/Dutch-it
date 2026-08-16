@@ -16,11 +16,6 @@ function normalizePhone(input) {
 // ===== GET /api/friends - Fetch the logged-in user's friends list =====
 router.get('/', async (req, res) => {
   try {
-    // .populate('friends') swaps the array of ObjectIds on req.user's
-    // document for full User objects — same pattern as populating a
-    // Group's members. We re-fetch here (rather than trusting req.user
-    // from the middleware) specifically so populate can run — the
-    // middleware's req.user was fetched without population.
     const currentUser = await User.findById(req.user._id).populate(
       'friends',
       'fullName email phoneNumber photoURL' // include photoURL along with public info
@@ -60,8 +55,6 @@ router.post('/add', async (req, res) => {
     const currentUser = await User.findById(req.user._id);
 
     // Check both directions aren't already connected before mutating
-    // anything — avoids duplicate entries piling up in either array if
-    // someone clicks "Add" twice.
     const alreadyFriends = currentUser.friends.some(
       (id) => id.toString() === friendUser._id.toString()
     );
@@ -69,8 +62,7 @@ router.post('/add', async (req, res) => {
       return res.status(409).json({ message: 'You are already friends with this person.' });
     }
 
-    // Mutual add: push each user into the other's friends array, then
-    // save both.
+    // Mutual add: push each user into the other's friends array, then save both.
     currentUser.friends.push(friendUser._id);
     friendUser.friends.push(currentUser._id);
 
@@ -89,6 +81,28 @@ router.post('/add', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error while adding friend.' });
+  }
+});
+
+// ===== DELETE /api/friends/:friendId - Remove a mutual friendship =====
+router.delete('/:friendId', async (req, res) => {
+  try {
+    const { friendId } = req.params;
+    const currentUser = await User.findById(req.user._id);
+    const friendUser = await User.findById(friendId);
+
+    if (!friendUser) return res.status(404).json({ message: 'User not found.' });
+
+    // Mutual remove — same symmetry as the mutual add.
+    currentUser.friends = currentUser.friends.filter((id) => id.toString() !== friendId);
+    friendUser.friends = friendUser.friends.filter((id) => id.toString() !== req.user._id.toString());
+    
+    await Promise.all([currentUser.save(), friendUser.save()]);
+
+    res.status(200).json({ message: 'Friend removed.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error while removing friend.' });
   }
 });
 
