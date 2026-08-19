@@ -15,8 +15,6 @@ function Login({ onSwitchToSignup }) {
     setIsSubmitting(true);
     try {
       await login(identifier, password);
-      // No manual navigation needed — AuthProvider's `user` state updates,
-      // and App.jsx re-renders into the authenticated view automatically.
     } catch (err) {
       setError(err.message);
       setIsSubmitting(false);
@@ -25,7 +23,7 @@ function Login({ onSwitchToSignup }) {
 
   return (
     <div className="auth-screen">
-      <div className="auth-panel">
+      <div className="auth-panel signature-hero-accent">
         <div className="auth-brand-wrap">
           <Logo />
         </div>

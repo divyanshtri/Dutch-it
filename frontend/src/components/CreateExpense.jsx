@@ -1,12 +1,20 @@
 import { useState } from 'react';
 import { calculateSplit } from '../utils/calculateSplit';
 import ReceiptUpload from './ReceiptUpload';
+import Avatar from './Avatar';
 
-// A blank line item template — used both for the initial row and every
-// time "+ Add Item" is clicked.
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+
 function blankLineItem() {
   return {
-    id: crypto.randomUUID(), // stable local key
+    id: crypto.randomUUID(),
     itemName: '',
     price: '',
     quantity: 1,
@@ -16,7 +24,6 @@ function blankLineItem() {
 }
 
 function CreateExpense({ group, onExpenseCreated, onCancel }) {
-  // `group.members` is already the full list of populated user objects
   const availableMembers = group.members;
 
   const [description, setDescription] = useState('');
@@ -29,7 +36,6 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  // ----- AI RECEIPT PARSING HANDLER -----
   function handleReceiptParsed(receiptData) {
     if (!receiptData) return;
     
@@ -46,14 +52,12 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
     setDescription(receiptData.merchantName);
   }
 
-  // ----- GENERIC POOL TOGGLE -----
   function togglePoolMember(setPool, userId) {
     setPool((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
     );
   }
 
-  // ----- LINE ITEM ROW MANAGEMENT -----
   function addLineItem() {
     setLineItems((prev) => [...prev, blankLineItem()]);
   }
@@ -68,7 +72,6 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
     );
   }
 
-  // ----- LIVE CALCULATION -----
   const totalAmount = lineItems.reduce(
     (sum, item) => sum + ((parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1)),
     0
@@ -80,7 +83,6 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
     alcoholMembers
   );
 
-  // UPDATED: Name lookup with fallback
   function nameById(id) {
     const member = availableMembers.find((m) => m._id === id);
     return member?.fullName || member?.name || 'Unknown';
@@ -144,8 +146,6 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
       </div>
 
       <form className="form form--wide" onSubmit={handleSubmit}>
-        
-        {/* ===== REAL AI RECEIPT UPLOAD OVERLAY ===== */}
         <ReceiptUpload onParsed={handleReceiptParsed} />
 
         <div className="form-field">
@@ -160,7 +160,6 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
           />
         </div>
 
-        {/* UPDATED: Payer dropdown options */}
         <div className="form-field">
           <label className="form-label" htmlFor="paid-by">Paid By</label>
           <select
@@ -178,7 +177,6 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
           </select>
         </div>
 
-        {/* ===== DIETARY POOLS ===== */}
         <div className="pools-grid">
           <MemberPool
             label="Vegetarian"
@@ -200,7 +198,6 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
           />
         </div>
 
-        {/* ===== LINE ITEMS ===== */}
         <div className="form-field">
           <span className="form-label">Items</span>
 
@@ -261,8 +258,9 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
                   className="remove-row-btn"
                   onClick={() => removeLineItem(item.id)}
                   disabled={lineItems.length === 1}
+                  aria-label="Remove item"
                 >
-                  ×
+                  <TrashIcon />
                 </button>
               </div>
             ))}
@@ -273,7 +271,6 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
           </button>
         </div>
 
-        {/* ===== LIVE SPLIT PREVIEW ===== */}
         <div className="preview-block">
           <h3 className="subsection-title">Split Preview</h3>
           <div className="preview-total">
@@ -305,22 +302,25 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
   );
 }
 
-{/* UPDATED: MemberPool sub-component with fallback */}
 function MemberPool({ label, members, selected, onToggle }) {
   return (
     <div className="member-pool">
       <span className="member-pool__label">{label}</span>
-      <div className="member-pool__list">
-        {members.map((m) => (
-          <label key={m._id} className="member-pool__row">
-            <input
-              type="checkbox"
-              checked={selected.includes(m._id)}
-              onChange={() => onToggle(m._id)}
-            />
-            <span>{m.fullName || m.name || 'Unknown'}</span>
-          </label>
-        ))}
+      <div className="member-pool__chips">
+        {members.map((m) => {
+          const active = selected.includes(m._id);
+          return (
+            <button
+              key={m._id}
+              type="button"
+              className={`member-chip-select ${active ? 'member-chip-select--active' : ''}`}
+              onClick={() => onToggle(m._id)}
+            >
+              <Avatar user={m} size={20} />
+              <span>{m.fullName || m.name || 'Unknown'}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

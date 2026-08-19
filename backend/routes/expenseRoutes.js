@@ -5,10 +5,13 @@ const Expense = require('../models/Expense');
 const Group = require('../models/Group');
 const calculateSplit = require('../utils/splitCalculator');
 const protect = require('../middleware/authMiddleware');
+const validate = require('../middleware/validate');
+const { actionLimiter } = require('../middleware/rateLimiters');
+const { createExpenseSchema } = require('../validators/expenseSchemas');
 
 router.use(protect);
 
-// ===== GET /api/expenses - fetch all expenses (for debugging/testing) =====
+// ===== GET /api/expenses - fetch all expenses =====
 router.get('/', async (req, res) => {
   try {
     const expenses = await Expense.find({});
@@ -20,15 +23,9 @@ router.get('/', async (req, res) => {
 });
 
 // ===== POST /api/expenses - create a new expense =====
-router.post('/', async (req, res) => {
+router.post('/', actionLimiter, validate(createExpenseSchema), async (req, res) => {
   try {
     const { group, description, totalAmount, paidBy, splitType = 'itemized' } = req.body;
-
-    if (!group || !description || !totalAmount || !paidBy) {
-      return res
-        .status(400)
-        .json({ message: 'group, description, totalAmount, and paidBy are required.' });
-    }
 
     const groupExists = await Group.findById(group);
     if (!groupExists) {
@@ -38,13 +35,7 @@ router.post('/', async (req, res) => {
     // ----- NON-ITEMIZED PATH (equally, unequally, percentage) -----
     if (splitType !== 'itemized') {
       const { splits } = req.body;
-      if (!Array.isArray(splits) || splits.length === 0) {
-        return res
-          .status(400)
-          .json({ message: 'splits array is required for this split type.' });
-      }
 
-      // Re-validate split totals server-side
       const sum = splits.reduce((s, x) => s + (x.amount || 0), 0);
       if (Math.abs(sum - totalAmount) > 0.5) {
         return res.status(400).json({
@@ -91,12 +82,6 @@ router.post('/', async (req, res) => {
       nonVegMembers = [],
       alcoholMembers = [],
     } = req.body;
-
-    if (!Array.isArray(lineItems) || lineItems.length === 0) {
-      return res
-        .status(400)
-        .json({ message: 'lineItems must be a non-empty array for itemized splits.' });
-    }
 
     const { balances, allMembers } = calculateSplit(
       lineItems,

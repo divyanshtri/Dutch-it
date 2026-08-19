@@ -90,6 +90,11 @@ function AppContent() {
             setActiveNav('groups');
             setView('list');
           }}
+          onNewGroup={() => {
+            setShowQuickExpense(false);
+            setActiveNav('groups');
+            setView('create');
+          }}
         />
       )}
 
@@ -101,6 +106,11 @@ function AppContent() {
             setShowScanner(false);
             setActiveNav('groups');
             setView('list');
+          }}
+          onNewGroup={() => {
+            setShowScanner(false);
+            setActiveNav('groups');
+            setView('create');
           }}
         />
       )}

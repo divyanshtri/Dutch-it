@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-function SimpleExpenseModal({ onClose, onCreated }) {
+function SimpleExpenseModal({ onClose, onCreated, onNewGroup }) {
   const [groups, setGroups] = useState([]);
   const [groupId, setGroupId] = useState('');
   const [group, setGroup] = useState(null); // Full group object with populated members
@@ -15,7 +15,7 @@ function SimpleExpenseModal({ onClose, onCreated }) {
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch available groups for the dropdown menu
+  // Fetch available groups
   useEffect(() => {
     async function fetchGroups() {
       try {
@@ -177,20 +177,41 @@ function SimpleExpenseModal({ onClose, onCreated }) {
         <h3 className="subsection-title">Add Expense</h3>
 
         <form className="form" onSubmit={handleSubmit}>
+          {/* ----- GROUP SELECTION CARDS ----- */}
           <div className="form-field">
             <label className="form-label">Group</label>
-            <select
-              className="form-input"
-              value={groupId}
-              onChange={(e) => handleSelectGroup(e.target.value)}
-            >
-              <option value="">Select a group…</option>
-              {groups.map((g) => (
-                <option key={g._id} value={g._id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
+
+            {groups.length === 0 ? (
+              <div className="groups-tile-grid">
+                <div
+                  className="group-tile group-tile--add"
+                  onClick={() => {
+                    onClose();
+                    onNewGroup?.();
+                  }}
+                >
+                  <span className="group-tile--add__plus">+</span>
+                  <span className="group-tile__meta">Add Group</span>
+                </div>
+              </div>
+            ) : (
+              <div className="fab-group-picker">
+                {groups.map((g) => (
+                  <div
+                    key={g._id}
+                    className={`fab-group-card ${
+                      groupId === g._id ? 'fab-group-card--selected' : ''
+                    }`}
+                    onClick={() => handleSelectGroup(g._id)}
+                  >
+                    <span className="fab-group-card__icon">
+                      {g.name.charAt(0).toUpperCase()}
+                    </span>
+                    <span className="fab-group-card__name">{g.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {group && (

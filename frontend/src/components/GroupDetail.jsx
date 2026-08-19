@@ -17,6 +17,9 @@ function GroupDetail({ groupId, onBack }) {
   const [isLoadingFriends, setIsLoadingFriends] = useState(false);
   const [error, setError] = useState(null);
 
+  // Nudge Confirmation state (holds the recipient's name or null)
+  const [nudgeConfirm, setNudgeConfirm] = useState(null);
+
   // Legacy full-page expense creator toggle
   const [showCreateExpense, setShowCreateExpense] = useState(false);
 
@@ -107,7 +110,7 @@ function GroupDetail({ groupId, onBack }) {
     }
   }
 
-  async function handleNudge(toUserId, amount) {
+  async function handleNudge(toUserId, toUserName, amount) {
     try {
       const res = await fetch('http://localhost:5000/api/nudges', {
         method: 'POST',
@@ -116,6 +119,7 @@ function GroupDetail({ groupId, onBack }) {
         body: JSON.stringify({ groupId, toUserId, amount }),
       });
       if (!res.ok) throw new Error('Failed to send nudge.');
+      setNudgeConfirm(toUserName); // trigger confirmation modal
     } catch (err) {
       setError(err.message);
     }
@@ -213,7 +217,10 @@ function GroupDetail({ groupId, onBack }) {
                   <span className="balance-row__amount">₹{debt.amount.toFixed(2)}</span>
 
                   {user?._id === debt.owedTo && (
-                    <button className="btn btn--ghost btn--small" onClick={() => handleNudge(debt.owes, debt.amount)}>
+                    <button
+                      className="btn btn--ghost btn--small"
+                      onClick={() => handleNudge(debt.owes, nameById[debt.owes], debt.amount)}
+                    >
                       Nudge
                     </button>
                   )}
@@ -245,6 +252,27 @@ function GroupDetail({ groupId, onBack }) {
             fetchGroupData();
           }}
         />
+      )}
+
+      {/* ----- NUDGE CONFIRMATION MODAL ----- */}
+      {nudgeConfirm && (
+        <div className="modal-backdrop" onClick={() => setNudgeConfirm(null)}>
+          <div className="modal-panel modal-panel--small" onClick={(e) => e.stopPropagation()}>
+            <h3 className="subsection-title">Reminded!</h3>
+            <p className="status-text" style={{ marginBottom: '1.5rem' }}>
+              <strong>{nudgeConfirm}</strong> has been notified.
+            </p>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="btn btn--primary"
+                onClick={() => setNudgeConfirm(null)}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ----- ADD MEMBER MODAL ----- */}

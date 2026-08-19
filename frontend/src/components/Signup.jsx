@@ -31,7 +31,7 @@ function Signup({ onSwitchToLogin }) {
 
   return (
     <div className="auth-screen">
-      <div className="auth-panel">
+      <div className="auth-panel signature-hero-accent">
         <div className="auth-brand-wrap">
           <Logo />
         </div>

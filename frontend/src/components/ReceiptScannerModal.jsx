@@ -1,12 +1,18 @@
-// src/components/ReceiptScannerModal.jsx
 import { useState, useEffect } from 'react';
 import ReceiptUpload from './ReceiptUpload';
+import GroupSkeleton from './skeletons/GroupSkeleton';
+import Avatar from './Avatar';
 import { calculateSplit } from '../utils/calculateSplit';
 
-// Local helper — mirrors CreateExpense.jsx's blankLineItem, but this
-// component maps AI-parsed items into the same shape rather than starting
-// from a blank row, so both places stay compatible with the same backend
-// payload contract.
+function TrashIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+
 function mapReceiptItem(item) {
   return {
     id: crypto.randomUUID(),
@@ -18,18 +24,14 @@ function mapReceiptItem(item) {
   };
 }
 
-function ReceiptScannerModal({ onClose, onCreated }) {
-  // ----- STEP CONTROL -----
-  const [step, setStep] = useState(1); // 1: select group, 2: scan, 3: itemize + submit
-
-  // ----- STEP 1 STATE -----
+function ReceiptScannerModal({ onClose, onCreated, onNewGroup }) {
+  const [step, setStep] = useState(1);
   const [groups, setGroups] = useState([]);
   const [groupId, setGroupId] = useState('');
-  const [group, setGroup] = useState(null); // full populated group, fetched on selection
+  const [group, setGroup] = useState(null);
   const [isLoadingGroups, setIsLoadingGroups] = useState(true);
   const [isLoadingGroupDetail, setIsLoadingGroupDetail] = useState(false);
 
-  // ----- STEP 3 STATE (populated once the receipt is parsed) -----
   const [description, setDescription] = useState('');
   const [paidBy, setPaidBy] = useState('');
   const [lineItems, setLineItems] = useState([]);
@@ -40,7 +42,6 @@ function ReceiptScannerModal({ onClose, onCreated }) {
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ----- FETCH THE USER'S GROUPS, ON MOUNT -----
   useEffect(() => {
     async function fetchGroups() {
       try {
@@ -56,7 +57,6 @@ function ReceiptScannerModal({ onClose, onCreated }) {
     fetchGroups();
   }, []);
 
-  // ----- STEP 1 -> fetch full group detail once a group is picked -----
   async function handleSelectGroup(id) {
     setGroupId(id);
     setGroup(null);
@@ -75,14 +75,12 @@ function ReceiptScannerModal({ onClose, onCreated }) {
     }
   }
 
-  // ----- STEP 2 -> receipt parsed, populate step 3's state and advance -----
   function handleParsed(receiptData) {
     setDescription(receiptData.merchantName);
     setLineItems(receiptData.lineItems.map(mapReceiptItem));
     setStep(3);
   }
 
-  // ----- GENERIC POOL TOGGLE, same pattern as CreateExpense -----
   function togglePoolMember(setPool, userId) {
     setPool((prev) =>
       prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
@@ -99,7 +97,6 @@ function ReceiptScannerModal({ onClose, onCreated }) {
     setLineItems((prev) => prev.filter((item) => item.id !== id));
   }
 
-  // ----- LIVE SPLIT PREVIEW, derived on every render -----
   const totalAmount = lineItems.reduce(
     (sum, item) => sum + ((parseFloat(item.price) || 0) * (parseInt(item.quantity) || 1)),
     0
@@ -163,25 +160,31 @@ function ReceiptScannerModal({ onClose, onCreated }) {
         className={`modal-panel ${step === 3 ? 'modal-panel--fullscreen' : 'modal-panel--wide'}`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ===== STEP 1: SELECT GROUP ===== */}
         {step === 1 && (
           <div className="form">
             <h3 className="subsection-title">Select a Group</h3>
 
             {isLoadingGroups ? (
-              <p className="status-text">Loading groups…</p>
+              <GroupSkeleton count={4} />
+            ) : groups.length === 0 ? (
+              <div className="groups-tile-grid">
+                <div className="group-tile group-tile--add" onClick={() => { onClose(); onNewGroup?.(); }}>
+                  <span className="group-tile--add__plus">+</span>
+                  <span className="group-tile__meta">Add Group</span>
+                </div>
+              </div>
             ) : (
-              <div className="form-field">
-                <select
-                  className="form-input"
-                  value={groupId}
-                  onChange={(e) => handleSelectGroup(e.target.value)}
-                >
-                  <option value="">Choose a group…</option>
-                  {groups.map((g) => (
-                    <option key={g._id} value={g._id}>{g.name}</option>
-                  ))}
-                </select>
+              <div className="fab-group-picker">
+                {groups.map((g) => (
+                  <div
+                    key={g._id}
+                    className={`fab-group-card ${groupId === g._id ? 'fab-group-card--selected' : ''}`}
+                    onClick={() => handleSelectGroup(g._id)}
+                  >
+                    <span className="fab-group-card__icon">{g.name.charAt(0).toUpperCase()}</span>
+                    <span className="fab-group-card__name">{g.name}</span>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -202,7 +205,6 @@ function ReceiptScannerModal({ onClose, onCreated }) {
           </div>
         )}
 
-        {/* ===== STEP 2: SCAN RECEIPT ===== */}
         {step === 2 && (
           <div className="form">
             <h3 className="subsection-title">Scan Receipt</h3>
@@ -215,10 +217,8 @@ function ReceiptScannerModal({ onClose, onCreated }) {
           </div>
         )}
 
-        {/* ===== STEP 3: ITEMIZED SPLIT (2-COLUMN GRID) ===== */}
         {step === 3 && group && (
           <div className="scanner-split-layout">
-            {/* ===== LEFT COLUMN: MAIN FORM ===== */}
             <div className="scanner-split-layout__main">
               <h3 className="subsection-title">Review &amp; Split</h3>
 
@@ -249,17 +249,21 @@ function ReceiptScannerModal({ onClose, onCreated }) {
                 ].map(({ label, pool, setPool }) => (
                   <div key={label} className="member-pool">
                     <span className="member-pool__label">{label}</span>
-                    <div className="member-pool__list">
-                      {group.members.map((m) => (
-                        <label key={m._id} className="member-pool__row">
-                          <input
-                            type="checkbox"
-                            checked={pool.includes(m._id)}
-                            onChange={() => togglePoolMember(setPool, m._id)}
-                          />
-                          <span>{m.fullName}</span>
-                        </label>
-                      ))}
+                    <div className="member-pool__chips">
+                      {group.members.map((m) => {
+                        const active = pool.includes(m._id);
+                        return (
+                          <button
+                            key={m._id}
+                            type="button"
+                            className={`member-chip-select ${active ? 'member-chip-select--active' : ''}`}
+                            onClick={() => togglePoolMember(setPool, m._id)}
+                          >
+                            <Avatar user={m} size={20} />
+                            <span>{m.fullName}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
@@ -313,8 +317,9 @@ function ReceiptScannerModal({ onClose, onCreated }) {
                         className="remove-row-btn"
                         onClick={() => removeLineItem(item.id)}
                         disabled={lineItems.length === 1}
+                        aria-label="Remove item"
                       >
-                        ×
+                        <TrashIcon />
                       </button>
                     </div>
                   ))}
@@ -324,7 +329,6 @@ function ReceiptScannerModal({ onClose, onCreated }) {
               {error && <p className="status-text status-text--error">{error}</p>}
             </div>
 
-            {/* ===== RIGHT COLUMN: STICKY SPLIT PREVIEW + ACTIONS ===== */}
             <div className="scanner-split-layout__sidebar">
               <div className="preview-block">
                 <h3 className="subsection-title">Split Preview</h3>

@@ -1,5 +1,6 @@
 const express = require('express');
 const multer = require('multer');
+const { fileTypeFromBuffer } = require('file-type');
 const router = express.Router();
 
 const parseReceiptImage = require('../utils/receiptParser');
@@ -17,31 +18,30 @@ const upload = multer({
 });
 
 // ----- DIETARY NORMALIZATION: vegan -> veg -----
-// Gemini reasons with FOUR dietary categories for better classification
-// accuracy. But our Expense schema and splitting logic only know about
-// three categories: 'veg', 'non-veg', 'neutral'. We fold 'vegan' into
-// 'veg' right here, at the boundary where AI output enters our system.
 function normalizeDietaryTag(tag) {
   return tag === 'vegan' ? 'veg' : tag;
 }
 
 // ----- QUANTITY NORMALIZATION -----
-// Defensive fallback even though the schema marks quantity as required —
-// belt-and-suspenders in case Gemini ever returns 0 or a null for an edge
-// case row. A quantity of 0 would make price * quantity always zero, so
-// we guard it here to default safely to 1.
 function normalizeQuantity(qty) {
   return qty && qty > 0 ? qty : 1;
 }
 
-router.post('/scan', upload.single('receipt'), async (req, res) => {
+router.post('/scan', upload.single('receipt'), async (req, res, next) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'No receipt image was uploaded.' });
     }
 
-    const { buffer, mimetype } = req.file;
-    const parsedReceipt = await parseReceiptImage(buffer, mimetype);
+    // Inspect the actual file signature (magic bytes) to prevent MIME-type header spoofing
+    const detectedType = await fileTypeFromBuffer(req.file.buffer);
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+
+    if (!detectedType || !allowedTypes.includes(detectedType.mime)) {
+      return res.status(400).json({ message: 'File does not appear to be a valid image.' });
+    }
+
+    const parsedReceipt = await parseReceiptImage(req.file.buffer, detectedType.mime);
 
     // Apply both dietary and quantity normalization to every line item 
     // before this ever reaches the frontend.
@@ -57,8 +57,7 @@ router.post('/scan', upload.single('receipt'), async (req, res) => {
     res.status(200).json({ receipt: normalizedReceipt });
 
   } catch (error) {
-    console.error(error);
-    res.status(400).json({ message: error.message || 'Failed to process receipt.' });
+    next(error);
   }
 });
 

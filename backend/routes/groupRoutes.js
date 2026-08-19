@@ -7,6 +7,13 @@ const Expense = require('../models/Expense');
 const Settlement = require('../models/Settlement');
 const calculateSplit = require('../utils/splitCalculator');
 const protect = require('../middleware/authMiddleware');
+const validate = require('../middleware/validate');
+const { actionLimiter } = require('../middleware/rateLimiters');
+const {
+  createGroupSchema,
+  addMemberSchema,
+  groupIdParamSchema,
+} = require('../validators/groupSchemas');
 
 // Protect all group routes
 router.use(protect);
@@ -26,18 +33,11 @@ router.get('/', async (req, res) => {
 });
 
 // ===== POST /api/groups - Create a new group =====
-router.post('/', async (req, res) => {
+router.post('/', actionLimiter, validate(createGroupSchema), async (req, res) => {
   try {
     const { name, members = [] } = req.body;
 
-    if (!name) {
-      return res.status(400).json({ message: 'Group name is required.' });
-    }
-
-    // Trust req.user._id for createdBy (never trust req.body for creator ID)
     const createdBy = req.user._id;
-
-    // Ensure creator is included in the members list
     const memberSet = new Set([...members.map(String), createdBy.toString()]);
     const finalMembers = [...memberSet];
 
@@ -59,7 +59,7 @@ router.post('/', async (req, res) => {
 });
 
 // ===== GET /api/groups/:id - Single group details =====
-router.get('/:id', async (req, res) => {
+router.get('/:id', validate(groupIdParamSchema, 'params'), async (req, res) => {
   try {
     const { id } = req.params;
     const group = await Group.findById(id)
@@ -72,28 +72,23 @@ router.get('/:id', async (req, res) => {
 
     res.status(200).json(group);
   } catch (error) {
-    if (error.name === 'CastError') {
-      return res.status(400).json({ message: 'Invalid group ID format.' });
-    }
     console.error(error);
     res.status(500).json({ message: 'Server error while fetching group.' });
   }
 });
 
 // ===== DELETE /api/groups/:id - Delete a group =====
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', actionLimiter, validate(groupIdParamSchema, 'params'), async (req, res) => {
   try {
     const group = await Group.findById(req.params.id);
     if (!group) {
       return res.status(404).json({ message: 'Group not found.' });
     }
 
-    // Only the creator can delete — prevents any member from wiping the group for everyone else.
     if (group.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Only the group creator can delete this group.' });
     }
 
-    // Clean up dependent data so orphaned expenses/settlements don't linger
     await Promise.all([
       Expense.deleteMany({ group: req.params.id }),
       Settlement.deleteMany({ group: req.params.id }),
@@ -108,44 +103,47 @@ router.delete('/:id', async (req, res) => {
 });
 
 // ===== POST /api/groups/:id/members - Add a member to an existing group =====
-router.post('/:id/members', async (req, res) => {
-  try {
-    const { userId } = req.body;
-    if (!userId) {
-      return res.status(400).json({ message: 'userId is required.' });
+router.post(
+  '/:id/members',
+  actionLimiter,
+  validate(groupIdParamSchema, 'params'),
+  validate(addMemberSchema),
+  async (req, res) => {
+    try {
+      const { userId } = req.body;
+
+      const group = await Group.findById(req.params.id);
+      if (!group) {
+        return res.status(404).json({ message: 'Group not found.' });
+      }
+
+      const userExists = await User.findById(userId);
+      if (!userExists) {
+        return res.status(404).json({ message: 'User not found.' });
+      }
+
+      const alreadyMember = group.members.some((id) => id.toString() === userId);
+      if (alreadyMember) {
+        return res.status(409).json({ message: 'This user is already a member.' });
+      }
+
+      group.members.push(userId);
+      await group.save();
+
+      const updatedGroup = await Group.findById(req.params.id)
+        .populate('members', 'fullName email photoURL')
+        .populate('createdBy', 'fullName email photoURL');
+
+      res.status(200).json(updatedGroup);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Server error while adding member.' });
     }
-
-    const group = await Group.findById(req.params.id);
-    if (!group) {
-      return res.status(404).json({ message: 'Group not found.' });
-    }
-
-    const userExists = await User.findById(userId);
-    if (!userExists) {
-      return res.status(404).json({ message: 'User not found.' });
-    }
-
-    const alreadyMember = group.members.some((id) => id.toString() === userId);
-    if (alreadyMember) {
-      return res.status(409).json({ message: 'This user is already a member.' });
-    }
-
-    group.members.push(userId);
-    await group.save();
-
-    const updatedGroup = await Group.findById(req.params.id)
-      .populate('members', 'fullName email photoURL')
-      .populate('createdBy', 'fullName email photoURL');
-
-    res.status(200).json(updatedGroup);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server error while adding member.' });
   }
-});
+);
 
 // ===== GET /api/groups/:id/balances - Cumulative net balances =====
-router.get('/:id/balances', async (req, res) => {
+router.get('/:id/balances', validate(groupIdParamSchema, 'params'), async (req, res) => {
   try {
     const groupId = req.params.id;
     const group = await Group.findById(groupId);
@@ -170,17 +168,15 @@ router.get('/:id/balances', async (req, res) => {
     expenses.forEach((expense) => {
       const payerId = expense.paidBy.toString();
 
-      // Non-itemized branch: direct custom splits (equally, unequally, percentage)
       if (expense.splitType && expense.splitType !== 'itemized') {
         expense.splits.forEach((s) => {
           const userId = s.user.toString();
           if (userId === payerId) return;
           addDebt(userId, payerId, s.amount);
         });
-        return; // skip calculateSplit path
+        return;
       }
 
-      // Itemized branch: receipt line items calculation
       const { balances } = calculateSplit(
         expense.lineItems,
         expense.vegMembers,

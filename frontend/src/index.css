@@ -14,11 +14,32 @@
   user-select: none;
 }
 
+/* ===== GLOBAL SCROLLBAR THEME ===== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #333333 #121212;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #121212;
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 8px;
+  border: 2px solid #121212;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #333333;
+}
+
 /* ----------------------------------------------------------------------------
    2. DESIGN TOKENS
    ---------------------------------------------------------------------------- */
 :root {
-  /* ---- Dark clay theme, per Stitch spec ---- */
   --color-bg: #111111;
   --color-surface: #1c1c1c;
   --color-surface-raised: #1c1c1c;
@@ -48,19 +69,16 @@
   --font-display: 'Archivo Narrow', system-ui, sans-serif;
   --weight-display: 700;
 
-  /* Clay/neumorphic shadow pairs — dark surface lit from top-left */
   --clay-shadow-raised: 4px 4px 10px #0b0b0b, -4px -4px 10px #222;
   --clay-shadow-raised-lg: 8px 8px 16px #0b0b0b, -8px -8px 16px #222;
   --clay-shadow-inset: inset 3px 3px 6px #080808, inset -3px -3px 6px #1a1a1a;
 
-  /* Spacing (4px grid) */
   --space-xs: 8px;
   --space-sm: 16px;
   --space-md: 24px;
   --space-lg: 32px;
   --space-xl: 48px;
 
-  /* Edges */
   --radius: 20px;
   --border-hairline: 1px solid var(--color-border);
   --rule-strong: 2px solid var(--color-border);
@@ -68,7 +86,6 @@
 
   --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
 
-  /* Motion */
   --t-fast: 0.15s ease;
   --t-panel: 0.25s ease;
 }
@@ -191,7 +208,6 @@ body {
   box-shadow: inset 4px 4px 8px #080808, inset -4px -4px 8px #1a1a1a, 0 0 0 1px rgba(243, 242, 242, 0.1);
 }
 
-/* Signature top-edge glow — soft red gradient line across panel tops */
 .signature-hero-accent {
   position: relative;
 }
@@ -250,7 +266,6 @@ body {
    5. NAVBAR — Floating Pill Header
    ---------------------------------------------------------------------------- */
 
-/* ===== FLOATING PILL NAVBAR ===== */
 .navbar-float-wrap {
   position: fixed;
   top: 20px;
@@ -396,7 +411,7 @@ body {
 .app-main {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 115px var(--space-lg) 96px; /* Top padding clears the floating navbar */
+  padding: 115px var(--space-lg) 96px;
   width: 100%;
 }
 
@@ -607,7 +622,9 @@ body {
 .auth-brand-wrap {
   display: flex;
   justify-content: center;
+  align-items: center;
   margin-bottom: var(--space-lg);
+  text-align: center;
 }
 
 .auth-switch {
@@ -618,7 +635,7 @@ body {
 }
 
 /* ----------------------------------------------------------------------------
-   10. GROUP CARDS — Vertical Tile Grid
+   10. GROUP CARDS — Vertical Tile Grid & FAB Picker
    ---------------------------------------------------------------------------- */
 .groups-tile-grid {
   display: grid;
@@ -669,7 +686,6 @@ body {
   color: var(--color-slate);
 }
 
-/* Legacy Group Row fallback compatibility */
 .groups-vlist {
   display: flex;
   flex-direction: column;
@@ -730,7 +746,6 @@ body {
   color: var(--color-slate);
 }
 
-/* Dotted "Add Group" Tile Card (Orange Accent Override) */
 .group-tile--add {
   background: rgba(236, 48, 19, 0.04);
   backdrop-filter: blur(8px);
@@ -755,6 +770,66 @@ body {
 .group-tile--add:hover .group-tile--add__plus {
   color: var(--color-accent);
   transform: scale(1.1);
+}
+
+.fab-group-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: var(--space-sm);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.fab-group-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  aspect-ratio: 1 / 1;
+  padding: var(--space-xs);
+  background-color: var(--color-surface);
+  border-radius: 12px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.fab-group-card:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.fab-group-card--selected {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent-soft);
+}
+
+.fab-group-card__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background-color: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  color: var(--color-ink);
+}
+
+.fab-group-card__name {
+  font-size: 0.6875rem;
+  color: var(--color-slate);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.fab-group-card--selected .fab-group-card__name {
+  color: var(--color-ink);
 }
 
 /* ----------------------------------------------------------------------------
@@ -824,7 +899,6 @@ body {
   color: var(--color-slate);
 }
 
-/* Member & friend select lists */
 .member-select-list {
   display: flex;
   flex-direction: column;
@@ -977,7 +1051,7 @@ body {
 }
 
 /* ----------------------------------------------------------------------------
-   14. DIETARY POOLS
+   14. DIETARY POOLS (Interactive Chip Selectors)
    ---------------------------------------------------------------------------- */
 .pools-grid {
   display: grid;
@@ -1002,18 +1076,36 @@ body {
   margin-bottom: var(--space-xs);
 }
 
-.member-pool__row {
+.member-pool__chips {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-xs);
-  padding: 6px 0;
-  cursor: pointer;
-  font-size: 0.875rem;
 }
 
-.member-pool__row input[type='checkbox'] {
-  accent-color: var(--color-accent);
+.member-chip-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 4px;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
   cursor: pointer;
+  font-size: 0.8125rem;
+  color: var(--color-slate);
+  transition: all var(--t-fast);
+}
+
+.member-chip-select:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--color-ink);
+}
+
+.member-chip-select--active {
+  background-color: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-ink);
+  font-weight: 600;
 }
 
 /* ----------------------------------------------------------------------------
@@ -1066,13 +1158,16 @@ body {
 }
 
 .remove-row-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
   color: var(--color-slate);
-  font-size: 1.25rem;
-  line-height: 1;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 4px;
+  border-radius: 6px;
+  transition: color var(--t-fast);
 }
 
 .remove-row-btn:hover:not(:disabled) {
@@ -1232,6 +1327,23 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--color-border);
+}
+
+.nudge-confirm-panel {
+  max-width: 300px;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-md);
+}
+
+.nudge-confirm-text {
+  font-size: 1rem;
+  color: var(--color-ink);
+}
+
+.nudge-confirm-panel .btn {
+  width: 100%;
+  justify-content: center;
 }
 
 /* ----------------------------------------------------------------------------
@@ -1457,7 +1569,6 @@ body {
   margin-bottom: var(--space-md);
 }
 
-/* Base Icon Button */
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -1482,7 +1593,6 @@ body {
   height: 18px;
 }
 
-/* Accent Icon Button (Add Friend Action Override) */
 .icon-btn--accent {
   width: 36px;
   height: 36px;
@@ -1597,25 +1707,6 @@ body {
 .group-tile-skeleton__name { width: 70%; height: 16px; }
 .group-tile-skeleton__meta { width: 45%; height: 11px; }
 
-.activity-feed,
-.member-select-list,
-.line-items {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-}
-.activity-feed::-webkit-scrollbar,
-.member-select-list::-webkit-scrollbar,
-.line-items::-webkit-scrollbar { width: 6px; }
-.activity-feed::-webkit-scrollbar-track,
-.member-select-list::-webkit-scrollbar-track,
-.line-items::-webkit-scrollbar-track { background: transparent; }
-.activity-feed::-webkit-scrollbar-thumb,
-.member-select-list::-webkit-scrollbar-thumb,
-.line-items::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 999px;
-}
-
 .status-text--error,
 .status-text--success {
   margin: 10px 0;
@@ -1629,10 +1720,14 @@ body {
 }
 
 .friend-tile__menu {
-  top: calc(100% + 6px);
-  left: auto;
-  right: 0;
-  transform: none;
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 8px);
+  transform: translateY(-50%);
+  min-width: 100px;
+  border-radius: 12px;
+  padding: 4px;
+  z-index: 10;
 }
 
 .friend-tile__menu button:hover { 

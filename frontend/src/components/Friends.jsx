@@ -11,7 +11,6 @@ function UserPlusIcon() {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      style={{ width: '18px', height: '18px' }}
     >
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
@@ -23,7 +22,7 @@ function UserPlusIcon() {
 
 function MoreVertIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16">
+    <svg viewBox="0 0 24 24" fill="currentColor">
       <circle cx="12" cy="5" r="1.5" />
       <circle cx="12" cy="12" r="1.5" />
       <circle cx="12" cy="19" r="1.5" />
@@ -55,15 +54,17 @@ function FriendRow({ friend, onUnfriend }) {
 
       <div className="friend-tile__menu-wrap" ref={menuRef}>
         <button
-          className="icon-btn icon-btn--accent"
+          className="icon-btn"
           onClick={() => setMenuOpen((v) => !v)}
           aria-label="Friend options"
         >
           <MoreVertIcon />
         </button>
         {menuOpen && (
-          <div className="photo-edit-menu friend-tile__menu">
+          <div className="glass-panel friend-tile__menu">
             <button
+              className="btn btn--ghost btn--small"
+              style={{ width: '100%' }}
               onClick={() => {
                 onUnfriend(friend._id);
                 setMenuOpen(false);
@@ -180,23 +181,18 @@ function Friends() {
           />
           <button
             type="submit"
-            className="icon-btn icon-btn--accent"
+            className="btn-accent"
             disabled={isSubmitting}
             aria-label="Submit add friend"
           >
-            <span
-              className="material-symbols-outlined"
-              style={{ fontSize: '18px' }}
-            >
-              person_add
-            </span>
+            Add
           </button>
         </form>
       )}
 
-      {error && <p className="status-text status-text--error">{error}</p>}
+      {error && <p className="status-text status-text--error" style={{ marginBottom: '16px' }}>{error}</p>}
       {successMsg && (
-        <p className="status-text status-text--success">{successMsg}</p>
+        <p className="status-text status-text--success" style={{ marginBottom: '16px' }}>{successMsg}</p>
       )}
 
       {isLoading ? (
