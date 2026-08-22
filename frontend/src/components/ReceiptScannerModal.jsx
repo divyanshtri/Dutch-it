@@ -3,6 +3,7 @@ import ReceiptUpload from './ReceiptUpload';
 import GroupSkeleton from './skeletons/GroupSkeleton';
 import Avatar from './Avatar';
 import { calculateSplit } from '../utils/calculateSplit';
+import { API_BASE_URL } from '../api';
 
 function TrashIcon() {
   return (
@@ -45,7 +46,7 @@ function ReceiptScannerModal({ onClose, onCreated, onNewGroup }) {
   useEffect(() => {
     async function fetchGroups() {
       try {
-        const res = await fetch('http://localhost:5000/api/groups', { credentials: 'include' });
+        const res = await fetch(`${API_BASE_URL}/api/groups`, { credentials: 'include' });
         const data = await res.json();
         setGroups(data);
       } catch {
@@ -64,7 +65,7 @@ function ReceiptScannerModal({ onClose, onCreated, onNewGroup }) {
 
     setIsLoadingGroupDetail(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${id}`, { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}/api/groups/${id}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to load group details.');
       const data = await res.json();
       setGroup(data);
@@ -121,7 +122,7 @@ function ReceiptScannerModal({ onClose, onCreated, onNewGroup }) {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch('http://localhost:5000/api/expenses', {
+      const res = await fetch(`${API_BASE_URL}/api/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

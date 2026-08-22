@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { API_BASE_URL } from '../api';
 
 // onParsed(receiptData) is called with the structured JSON once Gemini
 // successfully returns it — CreateExpense.jsx will eventually use this to
@@ -24,7 +25,7 @@ function ReceiptUpload({ onParsed }) {
     formData.append('receipt', file);
 
     try {
-      const res = await fetch('http://localhost:5000/api/receipts/scan', {
+      const res = await fetch(`${API_BASE_URL}/api/receipts/scan`, {
         method: 'POST',
         credentials: 'include',
         // NOTE: deliberately no 'Content-Type' header set here — the

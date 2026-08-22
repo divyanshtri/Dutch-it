@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import GroupSkeleton from './skeletons/GroupSkeleton';
+import { API_BASE_URL } from '../api';
 
 function getInitials(fullName) {
   const parts = fullName.trim().split(/\s+/);
@@ -15,7 +16,7 @@ function GroupsList({ onSelectGroup, searchTerm, onNewGroup, onAddFriend }) {
   useEffect(() => {
     async function fetchGroups() {
       try {
-        const res = await fetch('http://localhost:5000/api/groups', { credentials: 'include' });
+        const res = await fetch(`${API_BASE_URL}/api/groups`, { credentials: 'include' });
         if (!res.ok) throw new Error('Failed to fetch groups from the server.');
         const data = await res.json();
         setGroups(data);

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { calculateSplit } from '../utils/calculateSplit';
 import ReceiptUpload from './ReceiptUpload';
 import Avatar from './Avatar';
+import { API_BASE_URL } from '../api';
 
 function TrashIcon() {
   return (
@@ -103,7 +104,7 @@ function CreateExpense({ group, onExpenseCreated, onCancel }) {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch('http://localhost:5000/api/expenses', {
+      const res = await fetch(`${API_BASE_URL}/api/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import FriendSkeleton from './skeletons/FriendSkeleton';
 import Avatar from './Avatar';
+import { API_BASE_URL } from '../api';
 
 function UserPlusIcon() {
   return (
@@ -91,7 +92,7 @@ function Friends() {
   async function fetchFriends() {
     try {
       setIsLoading(true);
-      const res = await fetch('http://localhost:5000/api/friends', {
+      const res = await fetch(`${API_BASE_URL}/api/friends`, {
         credentials: 'include',
       });
       const data = await res.json();
@@ -119,7 +120,7 @@ function Friends() {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch('http://localhost:5000/api/friends/add', {
+      const res = await fetch(`${API_BASE_URL}/api/friends/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -143,7 +144,7 @@ function Friends() {
     setError(null);
     setSuccessMsg(null);
     try {
-      const res = await fetch(`http://localhost:5000/api/friends/${friendId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/friends/${friendId}`, {
         method: 'DELETE',
         credentials: 'include',
       });

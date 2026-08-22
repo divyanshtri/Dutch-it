@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { API_BASE_URL } from '../api';
 
 const AuthContext = createContext(null);
 
@@ -14,7 +15,7 @@ export function AuthProvider({ children }) {
   // Checks whether a valid session cookie already exists on initial load
   async function checkAuth() {
     try {
-      const res = await fetch('http://localhost:5000/api/auth/me', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
         credentials: 'include',
       });
       if (res.ok) {
@@ -35,7 +36,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function login(identifier, password) {
-    const res = await fetch('http://localhost:5000/api/auth/login', {
+    const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -48,7 +49,7 @@ export function AuthProvider({ children }) {
   }
 
   async function register(formData) {
-    const res = await fetch('http://localhost:5000/api/auth/register', {
+    const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -61,7 +62,7 @@ export function AuthProvider({ children }) {
   }
 
   async function logout() {
-    await fetch('http://localhost:5000/api/auth/logout', {
+    await fetch(`${API_BASE_URL}/api/auth/logout`, {
       method: 'POST',
       credentials: 'include',
     });
@@ -70,7 +71,7 @@ export function AuthProvider({ children }) {
 
   // Generalized updateProfile to accept an object payload (e.g., { fullName }, { photoURL }, or both)
   async function updateProfile(updates) {
-    const res = await fetch('http://localhost:5000/api/auth/me', {
+    const res = await fetch(`${API_BASE_URL}/api/auth/me`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

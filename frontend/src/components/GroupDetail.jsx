@@ -7,6 +7,7 @@ import SimpleExpenseModal from './SimpleExpenseModal';
 import DetailSkeleton from './skeletons/DetailSkeleton';
 import FriendSkeleton from './skeletons/FriendSkeleton';
 import Avatar from './Avatar';
+import { API_BASE_URL } from '../api';
 
 function GroupDetail({ groupId, onBack }) {
   const { user } = useAuth();
@@ -35,8 +36,8 @@ function GroupDetail({ groupId, onBack }) {
     try {
       setIsLoading(true);
       const [groupRes, balancesRes] = await Promise.all([
-        fetch(`http://localhost:5000/api/groups/${groupId}`, { credentials: 'include' }),
-        fetch(`http://localhost:5000/api/groups/${groupId}/balances`, { credentials: 'include' }),
+        fetch(`${API_BASE_URL}/api/groups/${groupId}`, { credentials: 'include' }),
+        fetch(`${API_BASE_URL}/api/groups/${groupId}/balances`, { credentials: 'include' }),
       ]);
 
       if (!groupRes.ok || !balancesRes.ok) {
@@ -64,7 +65,7 @@ function GroupDetail({ groupId, onBack }) {
     setShowAddMember(true);
     setIsLoadingFriends(true);
     try {
-      const res = await fetch('http://localhost:5000/api/friends', { credentials: 'include' });
+      const res = await fetch(`${API_BASE_URL}/api/friends`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to load friends.');
       const data = await res.json();
       setFriends(data);
@@ -78,7 +79,7 @@ function GroupDetail({ groupId, onBack }) {
   // Pass friendId on click and update local group state from backend JSON response
   async function handleAddMember(friendId) {
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}/members`, {
+      const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -98,7 +99,7 @@ function GroupDetail({ groupId, onBack }) {
     if (!window.confirm(`Delete "${group.name}" permanently? This cannot be undone.`)) return;
 
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${groupId}`, {
+      const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -112,7 +113,7 @@ function GroupDetail({ groupId, onBack }) {
 
   async function handleNudge(toUserId, toUserName, amount) {
     try {
-      const res = await fetch('http://localhost:5000/api/nudges', {
+      const res = await fetch(`${API_BASE_URL}/api/nudges`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

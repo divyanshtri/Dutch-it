@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../api';
 
 function SimpleExpenseModal({ onClose, onCreated, onNewGroup }) {
   const [groups, setGroups] = useState([]);
@@ -19,7 +20,7 @@ function SimpleExpenseModal({ onClose, onCreated, onNewGroup }) {
   useEffect(() => {
     async function fetchGroups() {
       try {
-        const res = await fetch('http://localhost:5000/api/groups', {
+        const res = await fetch(`${API_BASE_URL}/api/groups`, {
           credentials: 'include',
         });
         if (res.ok) {
@@ -41,7 +42,7 @@ function SimpleExpenseModal({ onClose, onCreated, onNewGroup }) {
       return;
     }
     try {
-      const res = await fetch(`http://localhost:5000/api/groups/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/groups/${id}`, {
         credentials: 'include',
       });
       if (res.ok) {
@@ -144,7 +145,7 @@ function SimpleExpenseModal({ onClose, onCreated, onNewGroup }) {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch('http://localhost:5000/api/expenses', {
+      const res = await fetch(`${API_BASE_URL}/api/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

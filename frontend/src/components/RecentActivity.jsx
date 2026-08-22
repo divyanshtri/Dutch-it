@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../api';
 
 // No date library needed for a simple relative-time label — this covers
 // the ranges an activity feed actually needs (minutes/hours/days), rolled
@@ -21,7 +22,7 @@ function RecentActivity() {
   useEffect(() => {
     async function fetchActivity() {
       try {
-        const res = await fetch('http://localhost:5000/api/activity', { credentials: 'include' });
+        const res = await fetch(`${API_BASE_URL}/api/activity`, { credentials: 'include' });
         const data = await res.json();
         setEvents(data);
       } catch {
@@ -60,4 +61,5 @@ function RecentActivity() {
     </div>
   );
 }
+
 export default RecentActivity;

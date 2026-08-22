@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { API_BASE_URL } from '../api';
 
 // `debt` is one row from the balances array: { owes, owedTo, amount }
 // `nameById` is the same lookup object GroupDetail already builds — reused
@@ -23,7 +24,7 @@ function RecordSettlement({ groupId, debt, nameById, onSettled, onCancel }) {
 
     setIsSubmitting(true);
     try {
-      const res = await fetch('http://localhost:5000/api/settlements', {
+      const res = await fetch(`${API_BASE_URL}/api/settlements`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

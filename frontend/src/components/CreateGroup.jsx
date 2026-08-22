@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { API_BASE_URL } from '../api';
 
 function CreateGroup({ onGroupCreated, onCancel }) {
   const { user } = useAuth();
@@ -23,7 +24,7 @@ function CreateGroup({ onGroupCreated, onCancel }) {
   useEffect(() => {
     async function fetchFriends() {
       try {
-        const res = await fetch('http://localhost:5000/api/friends', {
+        const res = await fetch(`${API_BASE_URL}/api/friends`, {
           credentials: 'include',
         });
         if (!res.ok) throw new Error('Failed to load friends');
@@ -67,7 +68,7 @@ function CreateGroup({ onGroupCreated, onCancel }) {
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('http://localhost:5000/api/groups', {
+      const res = await fetch(`${API_BASE_URL}/api/groups`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
