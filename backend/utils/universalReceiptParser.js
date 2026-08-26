@@ -2,88 +2,35 @@ const { GoogleGenAI } = require('@google/genai');
 
 const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
 const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || 'gemini-3.1-flash-lite';
-
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-const stringField = (description) => ({ type: 'string', description });
-const numberField = (description) => ({ type: 'number', description });
+const EXTRACTION_PROMPT = `Analyze the provided image of a receipt/invoice. Perform a complete, non-lossy extraction of ALL information visible on the document. Do not drop, omit, or misassign any field.
 
-const universalReceiptSchema = {
-  type: 'object',
-  properties: {
-    merchant: {
-      type: 'object',
-      properties: {
-        name: stringField('Merchant, seller, restaurant, or supplier name. Empty string if absent.'),
-        address: stringField('Complete merchant address as printed. Empty string if absent.'),
-        gstin: stringField('Merchant GSTIN exactly as printed. Empty string if absent.'),
-        pan: stringField('Merchant PAN exactly as printed. Empty string if absent.'),
-      },
-      required: ['name', 'address', 'gstin', 'pan'],
-    },
-    invoiceDetails: {
-      type: 'object',
-      properties: {
-        invoiceNumber: stringField('Invoice, bill, receipt, or document number. Empty string if absent.'),
-        invoiceDate: stringField('Invoice date exactly as printed. Empty string if absent.'),
-        dueDate: stringField('Payment due date exactly as printed. Empty string if absent.'),
-        placeOfSupply: stringField('Place or state of supply exactly as printed. Empty string if absent.'),
-      },
-      required: ['invoiceNumber', 'invoiceDate', 'dueDate', 'placeOfSupply'],
-    },
-    customer: {
-      type: 'object',
-      properties: {
-        name: stringField('Customer, buyer, billed-to, or shipped-to name. Empty string if absent.'),
-        gstin: stringField('Customer GSTIN exactly as printed. Empty string if absent.'),
-        address: stringField('Complete customer address as printed. Empty string if absent.'),
-      },
-      required: ['name', 'gstin', 'address'],
-    },
-    lineItems: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          srNo: numberField('Printed serial number; use the one-based row number if absent.'),
-          description: stringField('Full item or service description.'),
-          hsnSac: stringField('HSN or SAC code. Empty string if absent.'),
-          quantity: numberField('Item quantity. Use 1 when absent.'),
-          unit: stringField('Unit of measure as printed. Empty string if absent.'),
-          listPrice: numberField('Unit/list price before discount. Use 0 if absent.'),
-          discountPercent: numberField('Discount percentage. Use 0 if absent.'),
-          taxPercent: numberField('Combined tax percentage applying to this row. Use 0 if absent.'),
-          amount: numberField('Final printed line amount after discount and tax where the document presents it. Use 0 if absent.'),
-        },
-        required: ['srNo', 'description', 'hsnSac', 'quantity', 'unit', 'listPrice', 'discountPercent', 'taxPercent', 'amount'],
-      },
-    },
-    totals: {
-      type: 'object',
-      properties: {
-        subtotal: numberField('Subtotal before tax. Use 0 if absent.'),
-        cgst: numberField('Total CGST amount. Use 0 if absent.'),
-        sgst: numberField('Total SGST amount. Use 0 if absent.'),
-        igst: numberField('Total IGST amount. Use 0 if absent.'),
-        totalTax: numberField('Total tax amount. Use 0 if absent.'),
-        grandTotal: numberField('Final payable total. Use 0 if absent.'),
-        grandTotalInWords: stringField('Grand total in words exactly as printed. Empty string if absent.'),
-      },
-      required: ['subtotal', 'cgst', 'sgst', 'igst', 'totalTax', 'grandTotal', 'grandTotalInWords'],
-    },
-    paymentInfo: {
-      type: 'object',
-      properties: {
-        bankName: stringField('Bank name. Empty string if absent.'),
-        accountNumber: stringField('Bank account number exactly as printed. Empty string if absent.'),
-        ifscCode: stringField('IFSC code exactly as printed. Empty string if absent.'),
-        branch: stringField('Bank branch exactly as printed. Empty string if absent.'),
-      },
-      required: ['bankName', 'accountNumber', 'ifscCode', 'branch'],
-    },
+Return a pure JSON object structured dynamically as follows:
+{
+  "documentType": "String (e.g., Tax Invoice, Thermal Receipt, Hand-written Bill, Purchase Order)",
+  "headersAndMetadata": {
+    "<every visible header, metadata, seller, buyer, billing, shipping, and document field using its printed label>": "value"
   },
-  required: ['merchant', 'invoiceDetails', 'customer', 'lineItems', 'totals', 'paymentInfo'],
-};
+  "lineItems": [
+    {
+      "<each table column header exactly as detected>": "cell value"
+    }
+  ],
+  "totalsAndTaxBreakdown": {
+    "<every visible subtotal, tax, cess, charge, discount, total, and amount-in-words label>": "value"
+  },
+  "additionalSections": {
+    "<every remaining named section such as bank/payment details, terms, remarks, declarations, signatures, or custom footers>": "value or nested object"
+  },
+  "unclassifiedData": [
+    "Any visible text that does not fit the categories above"
+  ]
+}
+
+Dynamically extract EVERY key-value pair found in header, metadata, seller, customer, billing, shipping, or other document sections, including custom fields such as Invoice No, Date, Due Date, GSTIN, PAN, Place of Supply, Vehicle No, PO No, and Customer Name. Extract every row and every column from every items table. Use the printed table column labels as the JSON keys for each row; do not restrict them to common invoice columns. Capture all tax types, subtotals, totals, totals in words, extra charges, and discounts. Preserve nested relationships for additional sections. If the document contains multiple tables or sections that do not fit lineItems, retain them under additionalSections with descriptive dynamic keys. Put every remaining visible text fragment in unclassifiedData so no information is silently discarded.
+
+Ensure all numerical values are converted to JSON numbers where appropriate, while identifiers that can contain leading zeroes or formatting (invoice numbers, GSTIN, PAN, phone numbers, account numbers, HSN/SAC, postal codes, dates, percentages printed with symbols, and similar codes) remain clean strings. Keep printed labels as keys whenever possible. Do not invent missing content. Do not include markdown formatting or prose wrappers.`;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -95,17 +42,11 @@ async function callGemini(modelName, base64Image, mimeType) {
     contents: [{
       role: 'user',
       parts: [
-        {
-          text:
-            'Extract all visible structured data from this receipt or tax invoice. It may be a B2B GST invoice, retail bill, restaurant receipt, or another invoice format. Preserve identifiers and text exactly as printed. Do not infer GSTIN, PAN, bank details, dates, tax values, or totals that are not visible. Use empty strings or numeric zero for missing fields as required by the schema. Capture every genuine product or service row in reading order. Return only the schema-conforming JSON result.',
-        },
+        { text: EXTRACTION_PROMPT },
         { inlineData: { mimeType, data: base64Image } },
       ],
     }],
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: universalReceiptSchema,
-    },
+    config: { responseMimeType: 'application/json' },
   });
 }
 
@@ -117,11 +58,14 @@ async function parseUniversalReceipt(imageBuffer, mimeType) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const response = await callGemini(modelName, base64Image, mimeType);
-        return JSON.parse(response.text);
+        const parsed = JSON.parse(response.text);
+        if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
+          throw new Error('Gemini returned an invalid document structure.');
+        }
+        return parsed;
       } catch (error) {
         const status = error.status || error.code;
         const retryable = status === 429 || status === 503 || /\b(429|503)\b/.test(error.message || '');
-
         if (status === 404) break;
         if (!retryable) {
           console.error(`Universal receipt parsing failed on ${modelName}:`, error);
