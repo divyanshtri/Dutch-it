@@ -4,6 +4,9 @@ const { fileTypeFromBuffer } = require('file-type');
 const router = express.Router();
 
 const parseReceiptImage = require('../utils/receiptParser');
+const parseUniversalReceipt = require('../utils/universalReceiptParser');
+const protect = require('../middleware/authMiddleware');
+const { actionLimiter } = require('../middleware/rateLimiters');
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -60,5 +63,31 @@ router.post('/scan', upload.single('receipt'), async (req, res, next) => {
     next(error);
   }
 });
+
+// Temporary universal document parser. Kept separate from the dietary receipt flow.
+router.post(
+  '/parse-universal',
+  protect,
+  actionLimiter,
+  upload.single('receipt'),
+  async (req, res, next) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'No receipt or invoice image was uploaded.' });
+      }
+
+      const detectedType = await fileTypeFromBuffer(req.file.buffer);
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+      if (!detectedType || !allowedTypes.includes(detectedType.mime)) {
+        return res.status(400).json({ message: 'Upload a valid JPEG, PNG, or WEBP image.' });
+      }
+
+      const document = await parseUniversalReceipt(req.file.buffer, detectedType.mime);
+      return res.status(200).json({ document });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
 
 module.exports = router;

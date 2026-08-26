@@ -11,6 +11,7 @@ import Account from './components/Account';
 import Fab from './components/Fab';
 import SimpleExpenseModal from './components/SimpleExpenseModal';
 import ReceiptScannerModal from './components/ReceiptScannerModal';
+import UniversalReceiptParserModal from './components/UniversalReceiptParserModal';
 
 function AppContent() {
   const { isAuthenticated, loading } = useAuth();
@@ -22,6 +23,7 @@ function AppContent() {
 
   const [showQuickExpense, setShowQuickExpense] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [showUniversalParser, setShowUniversalParser] = useState(false);
 
   function goToDetail(groupId) {
     setSelectedGroupId(groupId);
@@ -79,6 +81,9 @@ function AppContent() {
       <Fab
         onQuickExpense={() => setShowQuickExpense(true)}
         onScanReceipt={() => setShowScanner(true)}
+        onUniversalParse={activeNav === 'groups' && view === 'list'
+          ? () => setShowUniversalParser(true)
+          : undefined}
       />
 
       {/* Global Quick Expense Modal */}
@@ -113,6 +118,10 @@ function AppContent() {
             setView('create');
           }}
         />
+      )}
+
+      {showUniversalParser && (
+        <UniversalReceiptParserModal onClose={() => setShowUniversalParser(false)} />
       )}
     </div>
   );
