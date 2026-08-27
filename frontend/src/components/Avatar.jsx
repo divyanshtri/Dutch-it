@@ -10,21 +10,20 @@ function getInitials(fullName) {
 // Navbar AND Account AND anywhere else an avatar might show up later.
 function Avatar({ user, size = 40 }) {
   const style = { width: size, height: size, fontSize: size * 0.4 };
-
-  if (user.photoURL) {
-    return (
+  return (
+    <span className="avatar-wrap" style={{ width: size, height: size }}>
+      {user.photoURL ? (
       <img
         src={user.photoURL}
         alt={user.fullName}
         className="avatar-img"
         style={style}
-      />
-    );
-  }
-
-  return (
-    <span className="avatar-initials" style={style}>
-      {getInitials(user.fullName)}
+      />) : (
+        <span className="avatar-initials" style={style}>
+          {getInitials(user.fullName)}
+        </span>
+      )}
+      {user.isGhost && <span className="avatar-ghost-dot" title="Unregistered guest" />}
     </span>
   );
 }

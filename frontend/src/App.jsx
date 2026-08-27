@@ -12,6 +12,7 @@ import Fab from './components/Fab';
 import SimpleExpenseModal from './components/SimpleExpenseModal';
 import ReceiptScannerModal from './components/ReceiptScannerModal';
 import UniversalReceiptParserModal from './components/UniversalReceiptParserModal';
+import PublicSummary from './components/PublicSummary';
 
 function AppContent() {
   const { isAuthenticated, loading } = useAuth();
@@ -24,6 +25,9 @@ function AppContent() {
   const [showQuickExpense, setShowQuickExpense] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
   const [showUniversalParser, setShowUniversalParser] = useState(false);
+
+  const publicMatch = window.location.pathname.match(/^\/s\/([^/]+)\/?$/);
+  if (publicMatch) return <PublicSummary shareToken={decodeURIComponent(publicMatch[1])} />;
 
   function goToDetail(groupId) {
     setSelectedGroupId(groupId);

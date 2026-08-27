@@ -7,6 +7,8 @@ import SimpleExpenseModal from './SimpleExpenseModal';
 import DetailSkeleton from './skeletons/DetailSkeleton';
 import FriendSkeleton from './skeletons/FriendSkeleton';
 import Avatar from './Avatar';
+import GhostBadge from './GhostBadge';
+import ShareSummaryModal from './ShareSummaryModal';
 import { API_BASE_URL } from '../api';
 
 function GroupDetail({ groupId, onBack }) {
@@ -31,6 +33,10 @@ function GroupDetail({ groupId, onBack }) {
   // Settlement & Member states
   const [settlingDebt, setSettlingDebt] = useState(null);
   const [showAddMember, setShowAddMember] = useState(false);
+  const [memberMode, setMemberMode] = useState('friend');
+  const [ghostForm, setGhostForm] = useState({ name: '', phone: '', email: '' });
+  const [isAddingGhost, setIsAddingGhost] = useState(false);
+  const [showShare, setShowShare] = useState(false);
 
   async function fetchGroupData() {
     try {
@@ -93,6 +99,24 @@ function GroupDetail({ groupId, onBack }) {
     } catch (err) {
       setError(err.message);
     }
+  }
+
+  async function handleAddGhost(event) {
+    event.preventDefault();
+    setError(null);
+    setIsAddingGhost(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/groups/${groupId}/ghost-member`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify(ghostForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to add guest member.');
+      setGhostForm({ name: '', phone: '', email: '' });
+      setShowAddMember(false);
+      await fetchGroupData();
+    } catch (err) { setError(err.message); }
+    finally { setIsAddingGhost(false); }
   }
 
   async function handleDeleteGroup() {
@@ -186,6 +210,9 @@ function GroupDetail({ groupId, onBack }) {
           <button className="btn btn--ghost btn--nav" onClick={() => setShowCreateExpense(true)}>
             + Itemized Split
           </button>
+          <button className="btn btn--ghost btn--nav" onClick={() => setShowShare(true)}>
+            Share Summary
+          </button>
           <button className="btn btn--ghost btn--nav" onClick={handleDeleteGroup}>
             Delete Group
           </button>
@@ -196,7 +223,7 @@ function GroupDetail({ groupId, onBack }) {
       <div className="members-row">
         {group.members.map((member) => (
           <span key={member._id} className="member-chip">
-            <Avatar user={member} size={20} /> {member.fullName || member.name || 'Unknown'}
+            <Avatar user={member} size={20} /> {member.fullName || member.name || 'Unknown'} {member.isGhost && <GhostBadge />}
           </span>
         ))}
       </div>
@@ -282,7 +309,12 @@ function GroupDetail({ groupId, onBack }) {
           <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
             <h3 className="subsection-title">Add Member</h3>
 
-            {isLoadingFriends ? (
+            <div className="split-tabs">
+              <button type="button" className={`split-tab ${memberMode === 'friend' ? 'split-tab--active' : ''}`} onClick={() => setMemberMode('friend')}>Existing Friend</button>
+              <button type="button" className={`split-tab ${memberMode === 'ghost' ? 'split-tab--active' : ''}`} onClick={() => setMemberMode('ghost')}>Create Guest</button>
+            </div>
+
+            {memberMode === 'friend' && (isLoadingFriends ? (
               <FriendSkeleton rows={3} />
             ) : eligibleFriends.length === 0 ? (
               <p className="status-text">No eligible friends to add.</p>
@@ -300,7 +332,14 @@ function GroupDetail({ groupId, onBack }) {
                   </div>
                 ))}
               </div>
-            )}
+            ))}
+
+            {memberMode === 'ghost' && <form className="form ghost-member-form" onSubmit={handleAddGhost}>
+              <div className="form-field"><label className="form-label">Name</label><input className="form-input" required value={ghostForm.name} onChange={(e) => setGhostForm((form) => ({ ...form, name: e.target.value }))} placeholder="Guest name" /></div>
+              <div className="form-field"><label className="form-label">Mobile (optional)</label><input className="form-input" value={ghostForm.phone} onChange={(e) => setGhostForm((form) => ({ ...form, phone: e.target.value }))} placeholder="+919876543210" /></div>
+              <div className="form-field"><label className="form-label">Email (optional)</label><input className="form-input" type="email" value={ghostForm.email} onChange={(e) => setGhostForm((form) => ({ ...form, email: e.target.value }))} placeholder="guest@example.com" /></div>
+              <button className="btn btn--primary" disabled={isAddingGhost}>{isAddingGhost ? 'Adding…' : 'Add without Account'}</button>
+            </form>}
 
             <div className="modal-actions">
               <button type="button" className="btn btn--ghost" onClick={() => setShowAddMember(false)}>
@@ -324,6 +363,8 @@ function GroupDetail({ groupId, onBack }) {
           }}
         />
       )}
+
+      {showShare && <ShareSummaryModal groupId={groupId} onClose={() => setShowShare(false)} />}
     </section>
   );
 }
