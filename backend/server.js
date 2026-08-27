@@ -12,6 +12,7 @@ const receiptRoutes = require('./routes/receiptRoutes');
 const friendRoutes = require('./routes/friendRoutes');
 const activityRoutes = require('./routes/activityRoutes');
 const nudgeRoutes = require('./routes/nudgeRoutes');
+const publicRoutes = require('./routes/publicRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const { authLimiter, generalLimiter } = require('./middleware/rateLimiters');
 
@@ -50,6 +51,7 @@ app.use('/api/receipts', receiptRoutes);
 app.use('/api/friends', friendRoutes);
 app.use('/api/activity', activityRoutes);
 app.use('/api/nudges', nudgeRoutes);
+app.use('/api/public', publicRoutes);
 
 // Test route
 app.get('/', (req, res) => {

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const groupSchema = new mongoose.Schema(
   {
@@ -19,6 +20,13 @@ const groupSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+    },
+    shareToken: {
+      type: String,
+      unique: true,
+      sparse: true,
+      default: () => crypto.randomUUID(),
+      index: true,
     },
   },
   {

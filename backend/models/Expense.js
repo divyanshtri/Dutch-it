@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const lineItemSchema = new mongoose.Schema(
   {
@@ -95,6 +96,13 @@ const expenseSchema = new mongoose.Schema(
     alcoholMembers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
 
     lineItems: [lineItemSchema],
+    shareToken: {
+      type: String,
+      unique: true,
+      sparse: true,
+      default: () => crypto.randomUUID(),
+      index: true,
+    },
   },
   {
     timestamps: true,

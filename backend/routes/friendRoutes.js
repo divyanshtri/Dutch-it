@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
   try {
     const currentUser = await User.findById(req.user._id).populate(
       'friends',
-      'fullName email phoneNumber photoURL'
+      'fullName email phoneNumber photoURL isGhost'
     );
 
     res.status(200).json(currentUser.friends);

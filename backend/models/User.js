@@ -10,8 +10,7 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: true,
-      unique: true,
+      required() { return !this.isGhost; },
       lowercase: true,
       trim: true,
       // Basic shape validation — not exhaustive RFC 5322 compliance (nothing
@@ -20,8 +19,7 @@ const userSchema = new mongoose.Schema(
     },
     phoneNumber: {
       type: String,
-      required: true,
-      unique: true,
+      required() { return !this.isGhost; },
       trim: true,
       // Accepts an optional leading + and 7-15 digits — deliberately loose
       // since phone formats vary hugely by country, and you're building a
@@ -31,7 +29,7 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required() { return !this.isGhost; },
       minlength: 8,
       // select: false means this field is EXCLUDED from query results by
       // default — e.g. User.find() will never return password hashes,
@@ -61,6 +59,16 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isGhost: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    createdById: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -76,6 +84,8 @@ const userSchema = new mongoose.Schema(
 // ranked substring/keyword search across multiple fields in one query,
 // rather than you writing three separate regex queries and merging results
 // yourself — regex scans are slow at scale, text indexes are built for this.
+userSchema.index({ email: 1 }, { unique: true, sparse: true });
+userSchema.index({ phoneNumber: 1 }, { unique: true, sparse: true });
 userSchema.index({ fullName: 'text', email: 'text', phoneNumber: 'text' });
 
 // ----- PASSWORD HASHING: PRE-SAVE HOOK -----
@@ -88,7 +98,7 @@ userSchema.index({ fullName: 'text', email: 'text', phoneNumber: 'text' });
 // just let the async function finish (or throw, which Mongoose also
 // catches automatically and turns into a rejected save()).
 userSchema.pre('save', async function () {
-  if (!this.isModified('password')) {
+  if (!this.isModified('password') || !this.password) {
     return; // returning early is enough — no next() needed
   }
 

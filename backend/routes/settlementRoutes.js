@@ -20,6 +20,13 @@ router.post('/', actionLimiter, validate(createSettlementSchema), async (req, re
     if (!groupExists) {
       return res.status(404).json({ message: 'Group not found.' });
     }
+    const memberIds = new Set(groupExists.members.map((id) => id.toString()));
+    if (!memberIds.has(req.user._id.toString())) {
+      return res.status(403).json({ message: 'You are not a member of this group.' });
+    }
+    if (!memberIds.has(payerId) || !memberIds.has(receiverId)) {
+      return res.status(400).json({ message: 'Both settlement participants must belong to the group.' });
+    }
 
     const [payerExists, receiverExists] = await Promise.all([
       User.findById(payerId),

@@ -14,7 +14,8 @@ router.use(protect);
 // ===== GET /api/expenses - fetch all expenses =====
 router.get('/', async (req, res) => {
   try {
-    const expenses = await Expense.find({});
+    const groupIds = await Group.find({ members: req.user._id }).distinct('_id');
+    const expenses = await Expense.find({ group: { $in: groupIds } });
     res.status(200).json(expenses);
   } catch (error) {
     console.error(error);
@@ -30,6 +31,16 @@ router.post('/', actionLimiter, validate(createExpenseSchema), async (req, res) 
     const groupExists = await Group.findById(group);
     if (!groupExists) {
       return res.status(404).json({ message: 'Group not found.' });
+    }
+    const memberIds = new Set(groupExists.members.map((id) => id.toString()));
+    if (!memberIds.has(req.user._id.toString())) {
+      return res.status(403).json({ message: 'You are not a member of this group.' });
+    }
+    const participantIds = splitType === 'itemized'
+      ? [paidBy, ...(req.body.vegMembers || []), ...(req.body.nonVegMembers || []), ...(req.body.alcoholMembers || [])]
+      : [paidBy, ...(req.body.splits || []).map((split) => split.user)];
+    if (participantIds.some((id) => !memberIds.has(id.toString()))) {
+      return res.status(400).json({ message: 'Every payer and split participant must belong to the group.' });
     }
 
     // ----- NON-ITEMIZED PATH (equally, unequally, percentage) -----
@@ -122,6 +133,27 @@ router.post('/', actionLimiter, validate(createExpenseSchema), async (req, res) 
     }
     console.error(error);
     return res.status(500).json({ message: 'Server error while creating expense.' });
+  }
+});
+
+router.post('/:id/share', actionLimiter, async (req, res, next) => {
+  try {
+    if (!require('mongoose').isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid expense ID.' });
+    }
+    const expense = await Expense.findById(req.params.id);
+    if (!expense) return res.status(404).json({ message: 'Expense not found.' });
+    const group = await Group.findById(expense.group);
+    if (!group?.members.some((id) => id.toString() === req.user._id.toString())) {
+      return res.status(403).json({ message: 'You are not a member of this group.' });
+    }
+    if (!expense.shareToken) {
+      expense.shareToken = require('crypto').randomUUID();
+      await expense.save();
+    }
+    return res.status(200).json({ shareToken: expense.shareToken });
+  } catch (error) {
+    return next(error);
   }
 });
 

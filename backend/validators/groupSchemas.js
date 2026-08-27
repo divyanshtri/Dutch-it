@@ -12,4 +12,10 @@ const addMemberSchema = z.object({
 
 const groupIdParamSchema = z.object({ id: objectId });
 
-module.exports = { createGroupSchema, addMemberSchema, groupIdParamSchema };
+const createGhostSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required.').max(100),
+  phone: z.string().trim().regex(/^\+?[0-9]{7,15}$/, 'Enter a valid phone number.').optional().or(z.literal('')),
+  email: z.string().trim().email('Enter a valid email.').optional().or(z.literal('')),
+});
+
+module.exports = { createGroupSchema, addMemberSchema, groupIdParamSchema, createGhostSchema };

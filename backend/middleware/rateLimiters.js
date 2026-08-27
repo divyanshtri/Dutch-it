@@ -23,4 +23,12 @@ const actionLimiter = rateLimit({
   message: { message: 'Action limit reached. Please wait a few minutes before trying again.' },
 });
 
-module.exports = { authLimiter, generalLimiter, actionLimiter };
+const publicShareLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 80,
+  message: { message: 'Too many shared-summary requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+module.exports = { authLimiter, generalLimiter, actionLimiter, publicShareLimiter };

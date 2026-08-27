@@ -13,6 +13,7 @@ const {
   createGroupSchema,
   addMemberSchema,
   groupIdParamSchema,
+  createGhostSchema,
 } = require('../validators/groupSchemas');
 
 // Protect all group routes
@@ -23,7 +24,7 @@ router.get('/', async (req, res) => {
   try {
     const groups = await Group.find({ members: req.user._id }).populate(
       'members',
-      'fullName email photoURL'
+      'fullName email phoneNumber photoURL isGhost'
     );
     res.status(200).json(groups);
   } catch (error) {
@@ -63,7 +64,7 @@ router.get('/:id', validate(groupIdParamSchema, 'params'), async (req, res) => {
   try {
     const { id } = req.params;
     const group = await Group.findById(id)
-      .populate('members', 'fullName email photoURL')
+      .populate('members', 'fullName email phoneNumber photoURL isGhost')
       .populate('createdBy', 'fullName email photoURL');
 
     if (!group) {
@@ -131,7 +132,7 @@ router.post(
       await group.save();
 
       const updatedGroup = await Group.findById(req.params.id)
-        .populate('members', 'fullName email photoURL')
+        .populate('members', 'fullName email phoneNumber photoURL isGhost')
         .populate('createdBy', 'fullName email photoURL');
 
       res.status(200).json(updatedGroup);
@@ -141,6 +142,78 @@ router.post(
     }
   }
 );
+
+// ===== POST /api/groups/:id/ghost-member - Create and attach an unregistered member =====
+router.post(
+  '/:id/ghost-member',
+  actionLimiter,
+  validate(groupIdParamSchema, 'params'),
+  validate(createGhostSchema),
+  async (req, res, next) => {
+    try {
+      const group = await Group.findById(req.params.id);
+      if (!group) return res.status(404).json({ message: 'Group not found.' });
+      if (group.createdBy.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'Only the group creator can add guest members.' });
+      }
+
+      const email = req.body.email ? req.body.email.toLowerCase() : undefined;
+      const phoneNumber = req.body.phone || undefined;
+      const identifiers = [email && { email }, phoneNumber && { phoneNumber }].filter(Boolean);
+      if (identifiers.length) {
+        const existing = await User.findOne({ $or: identifiers });
+        if (existing) {
+          return res.status(409).json({
+            message: existing.isGhost
+              ? 'A guest with this contact information already exists.'
+              : 'A registered account already uses this contact information. Add them as a regular member.',
+          });
+        }
+      }
+
+      const ghost = await User.create({
+        fullName: req.body.name,
+        email,
+        phoneNumber,
+        isGhost: true,
+        createdById: req.user._id,
+      });
+      group.members.push(ghost._id);
+      await group.save();
+
+      return res.status(201).json({
+        member: {
+          _id: ghost._id,
+          fullName: ghost.fullName,
+          email: ghost.email,
+          phoneNumber: ghost.phoneNumber,
+          photoURL: ghost.photoURL,
+          isGhost: true,
+        },
+      });
+    } catch (error) {
+      return next(error);
+    }
+  }
+);
+
+// ===== POST /api/groups/:id/share - Get or lazily create a public summary token =====
+router.post('/:id/share', actionLimiter, validate(groupIdParamSchema, 'params'), async (req, res, next) => {
+  try {
+    const group = await Group.findById(req.params.id);
+    if (!group) return res.status(404).json({ message: 'Group not found.' });
+    if (!group.members.some((id) => id.toString() === req.user._id.toString())) {
+      return res.status(403).json({ message: 'You are not a member of this group.' });
+    }
+    if (!group.shareToken) {
+      group.shareToken = require('crypto').randomUUID();
+      await group.save();
+    }
+    return res.status(200).json({ shareToken: group.shareToken });
+  } catch (error) {
+    return next(error);
+  }
+});
 
 // ===== GET /api/groups/:id/balances - Cumulative net balances =====
 router.get('/:id/balances', validate(groupIdParamSchema, 'params'), async (req, res) => {

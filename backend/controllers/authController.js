@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const generateToken = require('../utils/generateToken');
+const mergeGhostUser = require('../utils/mergeGhostUser');
 
 // ----- PASSWORD STRENGTH VALIDATION -----
 function isPasswordStrong(password) {
@@ -34,23 +35,25 @@ async function register(req, res, next) {
       });
     }
 
-    const existingUser = await User.findOne({
+    const existingUsers = await User.find({
       $or: [{ email: email.toLowerCase() }, { phoneNumber }],
     });
 
-    if (existingUser) {
-      const conflictField = existingUser.email === email.toLowerCase() ? 'email' : 'phone number';
+    const registeredConflict = existingUsers.find((candidate) => !candidate.isGhost);
+    if (registeredConflict) {
+      const conflictField = registeredConflict.email === email.toLowerCase() ? 'email' : 'phone number';
       return res.status(409).json({ message: `An account with this ${conflictField} already exists.` });
     }
 
-    const newUser = new User({
-      fullName,
-      email: email.toLowerCase(),
-      phoneNumber,
-      password,
-      isVegetarian,
-      drinksAlcohol,
-      photoURL: photoURL || null,
+    if (existingUsers.length > 1) {
+      return res.status(409).json({ message: 'Your email and phone match different guest profiles. Please contact support to merge them.' });
+    }
+
+    const newUser = existingUsers[0] || new User();
+    Object.assign(newUser, {
+      fullName, email: email.toLowerCase(), phoneNumber, password,
+      isVegetarian, drinksAlcohol, photoURL: photoURL || null,
+      isGhost: false, createdById: null,
     });
 
     const savedUser = await newUser.save();
@@ -135,12 +138,34 @@ function getMe(req, res) {
 // ===== PATCH /api/auth/me =====
 async function updateMe(req, res, next) {
   try {
-    const { fullName, photoURL } = req.body;
+    const { fullName, photoURL, email, phoneNumber } = req.body;
     const updates = {};
 
     if (fullName !== undefined) {
       if (!fullName.trim()) return res.status(400).json({ message: 'Name cannot be empty.' });
       updates.fullName = fullName.trim();
+    }
+
+    if (email !== undefined) {
+      const normalizedEmail = email.trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        return res.status(400).json({ message: 'Please provide a valid email address.' });
+      }
+      const matchingUser = await User.findOne({ email: normalizedEmail, _id: { $ne: req.user._id } });
+      if (matchingUser && !matchingUser.isGhost) return res.status(409).json({ message: 'That email is already in use.' });
+      if (matchingUser?.isGhost) await mergeGhostUser(matchingUser._id, req.user._id);
+      updates.email = normalizedEmail;
+    }
+
+    if (phoneNumber !== undefined) {
+      const normalizedPhone = phoneNumber.trim();
+      if (!/^\+?[0-9]{7,15}$/.test(normalizedPhone)) {
+        return res.status(400).json({ message: 'Please provide a valid phone number.' });
+      }
+      const matchingUser = await User.findOne({ phoneNumber: normalizedPhone, _id: { $ne: req.user._id } });
+      if (matchingUser && !matchingUser.isGhost) return res.status(409).json({ message: 'That phone number is already in use.' });
+      if (matchingUser?.isGhost) await mergeGhostUser(matchingUser._id, req.user._id);
+      updates.phoneNumber = normalizedPhone;
     }
 
     if (photoURL !== undefined && photoURL !== null) {
