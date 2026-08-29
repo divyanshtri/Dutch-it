@@ -1,7 +1,9 @@
+const ENABLE_UNIVERSAL_PARSER = false;
+
 function Fab({ onQuickExpense, onScanReceipt, onUniversalParse }) {
   return (
     <div className="fab-group">
-      {onUniversalParse && (
+      {ENABLE_UNIVERSAL_PARSER && onUniversalParse && (
         <button className="fab-ghost-clay" onClick={onUniversalParse} title="Parse Invoice">
           <span className="material-symbols-outlined">document_scanner</span>
         </button>
