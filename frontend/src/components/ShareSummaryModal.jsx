@@ -27,7 +27,11 @@ function ShareSummaryModal({ groupId, onClose }) {
   }, [groupId]);
 
   async function copy(text, type) {
-    try { await navigator.clipboard.writeText(text); setCopied(type); }
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(type);
+      window.setTimeout(() => setCopied(''), 2200);
+    }
     catch { setError('Could not access the clipboard.'); }
   }
 
@@ -56,6 +60,11 @@ function ShareSummaryModal({ groupId, onClose }) {
         {copied === 'whatsapp' ? 'Summary Copied!' : 'Copy WhatsApp Summary'}
       </button>
       <button className="btn btn--ghost" onClick={onClose}>Close</button>
+      {copied && (
+        <div className="toast toast--success" role="status">
+          {copied === 'link' ? 'Web link copied' : 'WhatsApp summary copied'}
+        </div>
+      )}
     </div>
   </div>;
 }

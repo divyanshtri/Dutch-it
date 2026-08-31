@@ -48,7 +48,7 @@ function ReceiptUpload({ onParsed }) {
 
   return (
     <div
-      className={`ocr-placeholder ${isDragging ? 'ocr-placeholder--dragging' : ''}`}
+      className={`ocr-placeholder ${isDragging ? 'ocr-placeholder--dragging' : ''} ${isProcessing ? 'ocr-placeholder--processing' : ''}`}
       onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
       onDragLeave={() => setIsDragging(false)}
       onDrop={(e) => {
@@ -67,7 +67,10 @@ function ReceiptUpload({ onParsed }) {
       />
 
       {isProcessing ? (
-        <span className="ocr-placeholder__label">Reading receipt…</span>
+        <>
+          <span className="ocr-placeholder__scanline" aria-hidden="true" />
+          <span className="ocr-placeholder__label">Reading receipt…</span>
+        </>
       ) : (
         <>
           <span className="ocr-placeholder__label">Upload Receipt</span>
